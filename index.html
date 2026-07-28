@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>占いの扉</title>
+<meta name="description" content="タロット占いと易占い、2つの占いへの入り口です。">
+<style>
+  :root {
+    --bg1: #ffffff;
+    --bg2: #ffffff;
+    --ink: #2b271f;
+    --ink-soft: #6b6250;
+    --gold: #a9803f;
+    --line: rgba(169, 128, 63, 0.25);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: linear-gradient(160deg, var(--bg1), var(--bg2));
+    color: var(--ink);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow-x: hidden;
+  }
+  .glow {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(circle at 50% -5%, rgba(169, 128, 63, 0.07), transparent 45%),
+      radial-gradient(circle at 90% 90%, rgba(162, 59, 46, 0.04), transparent 50%);
+  }
+  main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 460px;
+    padding: 44px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 28px;
+    letter-spacing: 0.16em;
+    color: var(--ink);
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin-top: 10px;
+    text-align: center;
+    line-height: 1.7;
+  }
+  .divider {
+    width: 90px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 26px auto 32px;
+  }
+  .doors {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  a.door {
+    display: block;
+    text-decoration: none;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    transition: transform 0.25s ease;
+  }
+  a.door:active { transform: scale(0.97); }
+  .door-inner {
+    position: relative;
+    padding: 26px 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .door-icon {
+    flex-shrink: 0;
+    font-size: 34px;
+    line-height: 1;
+  }
+  .door-text { flex: 1; min-width: 0; }
+  .door-title {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+  .door-desc {
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    margin-top: 5px;
+    line-height: 1.6;
+  }
+  .door-arrow {
+    flex-shrink: 0;
+    font-size: 18px;
+    opacity: 0.7;
+  }
+  /* タロットへの扉 */
+  .door.tarot .door-inner {
+    background: linear-gradient(135deg, #241b4d 0%, #171233 100%);
+  }
+  .door.tarot .door-title { color: #d9b96a; }
+  .door.tarot .door-desc { color: rgba(247, 240, 223, 0.68); }
+  .door.tarot .door-arrow { color: #d9b96a; }
+  /* 易占いへの扉 */
+  .door.ekikyo .door-inner {
+    background: linear-gradient(135deg, #f2ead8 0%, #e8dcc0 100%);
+  }
+  .door.ekikyo .door-title { color: #23201b; }
+  .door.ekikyo .door-desc { color: #57503f; }
+  .door.ekikyo .door-arrow { color: #a23b2e; }
+  /* 数秘術への扉 */
+  .door.numerology .door-inner {
+    background: linear-gradient(135deg, #0e3a38 0%, #16514c 100%);
+  }
+  .door.numerology .door-icon { color: #ffd9a0; }
+  .door.numerology .door-title { color: #e3a56d; }
+  .door.numerology .door-desc { color: rgba(226, 241, 234, 0.7); }
+  .door.numerology .door-arrow { color: #e3a56d; }
+  /* おみくじへの扉 */
+  .door.omikuji .door-inner {
+    background: linear-gradient(135deg, #8f1d18 0%, #b53a2b 100%);
+  }
+  .door.omikuji .door-icon { color: #fdf1e6; }
+  .door.omikuji .door-title { color: #fdf1e6; }
+  .door.omikuji .door-desc { color: rgba(253, 241, 230, 0.72); }
+  .door.omikuji .door-arrow { color: #fdf1e6; }
+  /* 星座占いへの扉 */
+  .door.horoscope .door-inner {
+    background: linear-gradient(135deg, #eeeaf7 0%, #cfc9e4 100%);
+  }
+  .door.horoscope .door-icon { color: #8d93ad; }
+  .door.horoscope .door-title { color: #3f3558; }
+  .door.horoscope .door-desc { color: #665c82; }
+  .door.horoscope .door-arrow { color: #8d93ad; }
+  /* 誕生花占いへの扉 */
+  .door.birthflower .door-inner {
+    background: linear-gradient(135deg, #fdf3ef 0%, #efcec5 100%);
+  }
+  .door.birthflower .door-icon { color: #a8475c; }
+  .door.birthflower .door-title { color: #4a3239; }
+  .door.birthflower .door-desc { color: #7c626a; }
+  .door.birthflower .door-arrow { color: #a8475c; }
+  /* タロット3枚引きへの扉 */
+  .door.tarot3 .door-inner {
+    background: linear-gradient(135deg, #3f2f24 0%, #211710 100%);
+  }
+  .door.tarot3 .door-icon { color: #93a68b; }
+  .door.tarot3 .door-title { color: #f0e6d6; }
+  .door.tarot3 .door-desc { color: rgba(240, 230, 214, 0.72); }
+  .door.tarot3 .door-arrow { color: #93a68b; }
+  /* バイオリズムへの扉 */
+  .door.biorhythm .door-inner {
+    background: linear-gradient(135deg, #2b2f38 0%, #1a1c22 100%);
+  }
+  .door.biorhythm .door-icon { color: #4fc0ee; }
+  .door.biorhythm .door-title { color: #e7e9ee; }
+  .door.biorhythm .door-desc { color: rgba(231, 233, 238, 0.7); }
+  .door.biorhythm .door-arrow { color: #4fc0ee; }
+  footer {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    color: var(--ink-soft);
+    opacity: 0.7;
+    padding-bottom: 28px;
+    padding-top: 36px;
+    text-align: center;
+    line-height: 1.8;
+  }
+  @media (min-width: 600px) {
+    h1 { font-size: 32px; }
+    .door-title { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<main>
+  <h1>占 い の 扉</h1>
+  <p class="subtitle">気になる方の扉をタップしてください</p>
+  <div class="divider"></div>
+
+  <div class="doors">
+    <a class="door tarot" href="tarot.html">
+      <div class="door-inner">
+        <div class="door-icon">🌙</div>
+        <div class="door-text">
+          <div class="door-title">タロット占い</div>
+          <div class="door-desc">カード1枚で、YESかNOかを占います</div>
+        </div>
+        <div class="door-arrow">›</div>
+      </div>
+    </a>
+
+    <a class="door tarot3" href="tarot3.html">
+      <div class="door-inner">
+        <div class="door-icon">✦</div>
+        <div class="door-text">
+          <div class="door-title">タロット3枚引き</div>
+          <div class="door-desc">過去・現在・未来の流れを読み解きます</div>
+        </div>
+        <div class="door-arrow">›</div>
+      </div>
+    </a>
+
+    <a class="door ekikyo" href="ekikyo.html">
+      <div class="door-inner">
+        <div class="door-icon">☯︎</div>
+        <div class="door-text">
+          <div class="door-title">易占い</div>
+          <div class="door-desc">六本の爻で、この先の流れを占います</div>
+        </div>
+        <div class="door-arrow">›</div>
+      </div>
+    </a>
+
+    <a class="door numerology" href="numerology.html">
+      <div class="door-inner">
+        <div class="door-icon">✷</div>
+        <div class="door-text">
+          <div class="door-title">数秘術</div>
+          <div class="door-desc">生年月日から、性格と今日の運勢を占います</div>
+        </div>
+        <div class="door-arrow">›</div>
+      </div>
+    </a>
+
+    <a class="door omikuji" href="omikuji.html">
+      <div class="door-inner">
+        <div class="door-icon">⛩</div>
+        <div class="door-text">
+          <div class="door-title">おみくじ</div>
+          <div class="door-desc">筒を振って、今日の一本を引きます</div>
+        </div>
+        <div class="door-arrow">›</div>
+      </div>
+    </a>
+
+    <a class="door horoscope" href="horoscope.html">
+      <div class="door-inner">
+        <div class="door-icon">✧</div>
+        <div class="door-text">
+          <div class="door-title">星座占い</div>
+          <div class="door-desc">12星座の、今日の運勢とランキング</div>
+        </div>
+        <div class="door-arrow">›</div>
+      </div>
+    </a>
+
+    <a class="door birthflower" href="birthflower.html">
+      <div class="door-inner">
+        <div class="door-icon">❀</div>
+        <div class="door-text">
+          <div class="door-title">誕生花占い</div>
+          <div class="door-desc">生まれた日の花から、人柄と今日を読みます</div>
+        </div>
+        <div class="door-arrow">›</div>
+      </div>
+    </a>
+
+    <a class="door biorhythm" href="biorhythm.html">
+      <div class="door-inner">
+        <div class="door-icon">∿</div>
+        <div class="door-text">
+          <div class="door-title">バイオリズム</div>
+          <div class="door-desc">身体・感情・知性の波をグラフで見ます</div>
+        </div>
+        <div class="door-arrow">›</div>
+      </div>
+    </a>
+  </div>
+</main>
+<footer>
+  ※占い結果は娯楽としてお楽しみください。
+</footer>
+</body>
+</html>
