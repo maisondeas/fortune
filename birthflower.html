@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>誕生花占い ― あなたの花と今日のお告げ</title>
+<meta name="description" content="生まれた日の花から、あなたの性格と今日のお告げを占います。">
+<style>
+  :root {
+    --petal1: #fdf3ef;
+    --petal2: #f7e0d8;
+    --petal3: #efcec5;
+    --berry: #a8475c;
+    --berry-soft: #c07a86;
+    --leaf: #758a63;
+    --leaf-soft: #93a684;
+    --bark: #4a3239;
+    --bark-soft: #7c626a;
+    --bark-faint: #a58d94;
+    --card: rgba(255, 252, 250, 0.78);
+    --line: rgba(168, 71, 92, 0.22);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: linear-gradient(180deg, var(--petal1) 0%, var(--petal2) 58%, var(--petal3) 100%);
+    color: var(--bark);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+  }
+  /* 舞う花びら */
+  .field {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 36% at 50% 0%, rgba(255, 255, 255, 0.72), transparent 62%),
+      radial-gradient(circle at 10% 92%, rgba(117, 138, 99, 0.12), transparent 48%);
+  }
+  .fleck {
+    position: absolute;
+    background: var(--berry-soft);
+    border-radius: 60% 0 60% 0;
+    opacity: 0.16;
+  }
+  main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 460px;
+    padding: 40px 20px 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--bark-soft);
+    margin-top: 10px;
+    text-align: center;
+    line-height: 1.7;
+  }
+  .divider {
+    width: 96px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--berry-soft), transparent);
+    margin: 22px auto 26px;
+  }
+  /* 入力 */
+  .input-block {
+    width: 100%;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .input-block > label {
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    color: var(--bark-soft);
+    margin-bottom: 12px;
+  }
+  .selects { display: flex; gap: 10px; align-items: center; width: 100%; }
+  .sel-wrap { flex: 1; display: flex; align-items: center; gap: 6px; }
+  select {
+    flex: 1;
+    font-size: 16px;
+    font-family: inherit;
+    padding: 11px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--bark);
+    outline: none;
+    text-align: center;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  select:focus { border-color: var(--berry); }
+  .unit { font-size: 14px; color: var(--bark-soft); flex-shrink: 0; }
+  button.cast {
+    margin-top: 20px;
+    font-size: 16px;
+    font-family: inherit;
+    letter-spacing: 0.12em;
+    padding: 13px 44px;
+    border-radius: 999px;
+    border: 1px solid var(--berry);
+    background: transparent;
+    color: var(--berry);
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.cast:active { background: var(--berry); color: var(--petal1); }
+  /* 結果 */
+  .result-area {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeUp 0.7s ease both;
+  }
+  .result-area.show { display: flex; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .result-area { animation: none !important; }
+    .petal { animation: none !important; }
+  }
+  .born-label {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--bark-faint);
+    margin-bottom: 14px;
+  }
+  /* CSSで描く花 */
+  .bloom {
+    position: relative;
+    width: 116px;
+    height: 116px;
+    margin-bottom: 18px;
+  }
+  .petal {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 30px;
+    height: 52px;
+    margin-left: -15px;
+    margin-top: -52px;
+    border-radius: 50% 50% 46% 46%;
+    transform-origin: 50% 100%;
+    opacity: 0.92;
+    animation: bloomIn 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+  @keyframes bloomIn {
+    from { transform: rotate(var(--rot)) scale(0.2); opacity: 0; }
+    to { transform: rotate(var(--rot)) scale(1); opacity: 0.92; }
+  }
+  .bloom-core {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 26px;
+    height: 26px;
+    margin: -13px 0 0 -13px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 34%, #ffe9a8, #e8b84d);
+    box-shadow: 0 0 0 1px rgba(74, 50, 57, 0.12);
+    z-index: 2;
+  }
+  .flower-name {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-align: center;
+  }
+  .flower-reading {
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    color: var(--bark-faint);
+    margin-top: 5px;
+    text-align: center;
+  }
+  .hanakotoba {
+    display: inline-block;
+    margin: 16px 0 4px;
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
+    color: var(--berry);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 6px 20px;
+  }
+  .hanakotoba-lead {
+    font-size: 10.5px;
+    letter-spacing: 0.24em;
+    color: var(--bark-faint);
+    margin-bottom: 8px;
+  }
+  .card {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 22px;
+  }
+  .card + .card { margin-top: 14px; }
+  .card-label {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    color: var(--berry);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+  .card-text {
+    font-size: 14.5px;
+    line-height: 1.95;
+    letter-spacing: 0.03em;
+  }
+  .stem {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .stem-name {
+    flex-shrink: 0;
+    width: 4.4em;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--bark-soft);
+  }
+  .stem-text { font-size: 13.5px; }
+  .swatch {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 1px solid rgba(74, 50, 57, 0.22);
+    margin-right: 8px;
+    vertical-align: -2px;
+  }
+  .today-note {
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    color: var(--bark-faint);
+    margin-top: 10px;
+  }
+  button.retry {
+    margin-top: 28px;
+    font-size: 16px;
+    font-family: inherit;
+    letter-spacing: 0.1em;
+    padding: 12px 34px;
+    border-radius: 999px;
+    border: 1px solid var(--leaf-soft);
+    background: transparent;
+    color: var(--bark-soft);
+    cursor: pointer;
+    transition: background 0.3s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.retry:active { background: rgba(117, 138, 99, 0.16); }
+  footer {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    color: var(--bark-faint);
+    padding: 0 16px 26px;
+    text-align: center;
+    line-height: 1.8;
+  }
+  @media (min-width: 600px) {
+    h1 { font-size: 29px; }
+    .flower-name { font-size: 30px; }
+    .bloom { width: 132px; height: 132px; }
+  }
+</style>
+</head>
+<body>
+<div class="field" id="field"></div>
+<main>
+  <h1>誕 生 花 占 い</h1>
+  <p class="subtitle">生まれた日に咲く花が、<br>あなたの人柄と今日を語ります</p>
+  <div class="divider"></div>
+
+  <div class="input-block" id="inputBlock">
+    <label for="selMonth">生まれた月日を選んでください</label>
+    <div class="selects">
+      <div class="sel-wrap">
+        <select id="selMonth" aria-label="月"></select><span class="unit">月</span>
+      </div>
+      <div class="sel-wrap">
+        <select id="selDay" aria-label="日"></select><span class="unit">日</span>
+      </div>
+    </div>
+    <button class="cast" id="castBtn">占う</button>
+  </div>
+
+  <div class="result-area" id="resultArea">
+    <p class="born-label" id="bornLabel"></p>
+
+    <div class="bloom" id="bloom">
+      <div class="bloom-core"></div>
+    </div>
+
+    <div class="flower-name" id="flowerName"></div>
+    <div class="flower-reading" id="flowerReading"></div>
+
+    <div style="text-align:center; margin-top:18px;">
+      <div class="hanakotoba-lead">花 言 葉</div>
+      <div class="hanakotoba" id="hanakotoba"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">あなたの人柄</div>
+      <p class="card-text" id="personality"></p>
+      <div class="stem">
+        <div class="stem-name">花の色</div>
+        <div class="stem-text" id="flowerColor"></div>
+      </div>
+      <div class="stem">
+        <div class="stem-name">咲く季節</div>
+        <div class="stem-text" id="flowerSeason"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">今日のお告げ</div>
+      <p class="card-text" id="oracle"></p>
+      <p class="today-note" id="todayNote"></p>
+    </div>
+
+    <button class="retry" id="retryBtn">月日を選び直す</button>
+  </div>
+</main>
+<footer>
+  ※誕生花の割り当ては書物や花店によって異なります。<br>
+  当ページは季節に沿った独自の対応でご案内しています。<br>
+  占い結果は娯楽としてお楽しみください。
+</footer>
+
+<script>
+// ---- 舞う花びら ----
+(function () {
+  const wrap = document.getElementById("field");
+  for (let i = 0; i < 26; i++) {
+    const f = document.createElement("div");
+    f.className = "fleck";
+    const w = Math.random() * 7 + 5;
+    f.style.width = w + "px";
+    f.style.height = (w * 0.7) + "px";
+    f.style.left = Math.random() * 100 + "%";
+    f.style.top = Math.random() * 100 + "%";
+    f.style.transform = "rotate(" + (Math.random() * 360) + "deg)";
+    wrap.appendChild(f);
+  }
+})();
+
+// ---- 誕生花(月ごとに5種。生まれた日で振り分け) ----
+const FLOWERS = {
+  1: [
+    { name: "水仙", reading: "すいせん", word: "神秘・自尊", color: "#f5e6a8", colorName: "淡い黄", season: "冬から早春",
+      msg: "凛とした佇まいで、人に流されない芯の強さを持っています。自分の価値をきちんと知っているぶん、周りに媚びる必要がありません。ただ、ひとり孤高になりすぎないよう、心を開く相手を一人は持っておくと安心です。" },
+    { name: "福寿草", reading: "ふくじゅそう", word: "幸せを招く・永久の幸福", color: "#f2b736", colorName: "山吹", season: "早春",
+      msg: "そこにいるだけで場が明るくなる、福を呼ぶような人です。困っている人を放っておけない優しさがあり、それが巡り巡って自分の幸運にもつながっていきます。人に与えた分は、必ず形を変えて返ってきます。" },
+    { name: "椿", reading: "つばき", word: "控えめな優しさ・気取らない魅力", color: "#c9243f", colorName: "紅", season: "冬",
+      msg: "派手に自分を主張しないのに、不思議と印象に残る人です。丁寧な所作や言葉づかいに人柄がにじみ、時間をかけて信頼を集めていきます。焦って認められようとしなくて大丈夫です。" },
+    { name: "蝋梅", reading: "ろうばい", word: "慈愛・ゆかしさ", color: "#f0d264", colorName: "蜜柑色", season: "真冬",
+      msg: "厳しい状況でも、ふっと人を和ませる香りのような優しさを持っています。自分が大変なときほど周りを気づかってしまうので、たまには誰かに甘えてみてください。" },
+    { name: "南天", reading: "なんてん", word: "私の愛は増すばかり・良い家庭", color: "#d3402f", colorName: "深緋", season: "冬",
+      msg: "家族や身近な人を大切にする、あたたかい心の持ち主です。時間をかけて育てた関係ほど強くなるタイプで、長い付き合いになるほどあなたの良さが伝わっていきます。" }
+  ],
+  2: [
+    { name: "梅", reading: "うめ", word: "高潔・忍耐", color: "#f2b3c0", colorName: "紅梅色", season: "早春",
+      msg: "寒さの残るうちから花を咲かせる梅のように、苦しい時期にこそ力を発揮する人です。安易な妥協を嫌う潔さがあり、その姿勢が周囲の尊敬を集めます。" },
+    { name: "フリージア", reading: "ふりーじあ", word: "親愛の情・純潔", color: "#f7e36b", colorName: "菜の花色", season: "春",
+      msg: "誰にでも分け隔てなく接することができる、風通しのよい人柄です。あなたの周りには自然と人が集まり、その輪の中心にいることが多いでしょう。" },
+    { name: "沈丁花", reading: "じんちょうげ", word: "栄光・不滅", color: "#e8c3d0", colorName: "桜鼠", season: "早春",
+      msg: "自分から名乗り出なくても、その存在が香りのように伝わっていく人です。目立つことを好まないのに、いつのまにか大切な役目を任されているタイプです。" },
+    { name: "マーガレット", reading: "まーがれっと", word: "真実の愛・信頼", color: "#fbfaf3", colorName: "白練", season: "春",
+      msg: "素直でまっすぐな心を持ち、嘘やごまかしを嫌います。その正直さが信頼を生み、大事な場面であなたを助けてくれるでしょう。" },
+    { name: "クロッカス", reading: "くろっかす", word: "青春の喜び・切望", color: "#a88fd0", colorName: "菫色", season: "早春",
+      msg: "いくつになっても心の若さを失わない人です。新しいことへの好奇心が原動力で、それがあなたを飽きさせず前へ進ませてくれます。" }
+  ],
+  3: [
+    { name: "桜", reading: "さくら", word: "精神の美・優れた美人", color: "#f8d3dc", colorName: "桜色", season: "春",
+      msg: "華やかさと儚さを併せ持つ、印象に残る人です。ここぞという場面で一気に開花する力があり、周囲を惹きつけます。散り際の潔さも、あなたの魅力のひとつです。" },
+    { name: "菜の花", reading: "なのはな", word: "快活・明るさ", color: "#f7dc4e", colorName: "菜の花色", season: "春",
+      msg: "屈託のない明るさで、周りの気持ちまで軽くしてしまう人です。難しく考えすぎない素直さが、結果的にいちばん良い道を選ばせてくれます。" },
+    { name: "チューリップ", reading: "ちゅーりっぷ", word: "思いやり・博愛", color: "#e5566d", colorName: "薔薇色", season: "春",
+      msg: "人の気持ちを汲むのが上手で、そばにいるだけで安心感を与えます。まっすぐ立つ姿のように、自分の芯も静かに保っている人です。" },
+    { name: "スイートピー", reading: "すいーとぴー", word: "門出・優しい思い出", color: "#eab8d4", colorName: "撫子色", season: "春",
+      msg: "新しい場所へ踏み出すことを恐れない、軽やかさを持っています。別れさえも前向きに受け止められる強さがあり、それがあなたを遠くまで運びます。" },
+    { name: "木蓮", reading: "もくれん", word: "自然への愛・持続性", color: "#e9dcea", colorName: "白藤色", season: "春",
+      msg: "落ち着いた品と、じっくり物事を続ける粘り強さを持っています。派手さより中身で勝負するタイプで、長い目で見るほど評価が上がっていきます。" }
+  ],
+  4: [
+    { name: "藤", reading: "ふじ", word: "優しさ・決して離れない", color: "#b9a5d9", colorName: "藤色", season: "晩春",
+      msg: "しなやかで、争わずして人の心をつかむ人です。一度結んだ縁を大切にし続けるので、長く付き合うほど深く信頼される存在になります。" },
+    { name: "忘れな草", reading: "わすれなぐさ", word: "私を忘れないで・真実の友情", color: "#8fb4e0", colorName: "空色", season: "春",
+      msg: "小さな約束や、何気ないひと言をきちんと覚えている人です。そのまめやかさが、相手にとっては何よりの誠実さとして伝わります。" },
+    { name: "カスミソウ", reading: "かすみそう", word: "清らかな心・感謝", color: "#fcfbf7", colorName: "白", season: "春",
+      msg: "主役を張らずとも、そこにいることで全体を美しく整えてしまう人です。誰かを引き立てる喜びを知っている、心の豊かな性質を持っています。" },
+    { name: "都忘れ", reading: "みやこわすれ", word: "しばしの憩い・穏やかさ", color: "#9d8fc4", colorName: "紫苑色", season: "春",
+      msg: "そばにいると、ふっと肩の力が抜けるような安らぎを与える人です。騒がしさより静けさを好み、その落ち着きが周囲の支えになっています。" },
+    { name: "石楠花", reading: "しゃくなげ", word: "威厳・荘厳", color: "#e498b4", colorName: "牡丹色", season: "晩春",
+      msg: "内に静かな誇りを秘めた人です。簡単には心を明かしませんが、認めた相手には深い情を注ぎます。その一貫した姿勢が信頼を生みます。" }
+  ],
+  5: [
+    { name: "鈴蘭", reading: "すずらん", word: "再び幸せが訪れる・純粋", color: "#fbfaf5", colorName: "生成り色", season: "初夏",
+      msg: "つらい時期を越えたあとに、必ず良いことを引き寄せる人です。素直で穢れのない心を保っているからこそ、幸運のほうから近づいてきます。" },
+    { name: "カーネーション", reading: "かーねーしょん", word: "無垢な愛・感謝", color: "#e8657f", colorName: "紅赤", season: "初夏",
+      msg: "身近な人への感謝を、きちんと言葉や行動で示せる人です。その素直さが人間関係をあたためて、あなた自身をも守ってくれます。" },
+    { name: "芍薬", reading: "しゃくやく", word: "恥じらい・慎ましさ", color: "#f2a8bd", colorName: "薄紅", season: "初夏",
+      msg: "華やかな魅力を持ちながら、それを誇示しない奥ゆかしさがあります。控えめだからこそ、いざというときの存在感が際立つ人です。" },
+    { name: "薔薇", reading: "ばら", word: "愛情・情熱", color: "#c0304a", colorName: "臙脂", season: "初夏",
+      msg: "心に熱いものを持ち、好きなことにはとことん打ち込む人です。棘のような厳しさも併せ持ちますが、それはあなたの真剣さの裏返しです。" },
+    { name: "菖蒲", reading: "あやめ", word: "優雅・良い便り", color: "#7b6bb0", colorName: "菖蒲色", season: "初夏",
+      msg: "筋の通った振る舞いと品の良さで、自然と一目置かれる人です。良い知らせを運んでくる役回りになることも多いでしょう。" }
+  ],
+  6: [
+    { name: "紫陽花", reading: "あじさい", word: "辛抱強い愛情・家族の絆", color: "#8ba8d8", colorName: "青藤色", season: "梅雨",
+      msg: "状況に合わせて色を変えられる柔軟さと、根に持つ深い愛情を併せ持ちます。移り気に見られることもありますが、実は誰よりも粘り強い人です。" },
+    { name: "梔子", reading: "くちなし", word: "喜びを運ぶ・洗練", color: "#fdfaf0", colorName: "象牙色", season: "初夏",
+      msg: "多くを語らずとも、その気配で人を幸せにできる人です。趣味や感性が洗練されていて、選ぶものにあなたらしさがにじみます。" },
+    { name: "百合", reading: "ゆり", word: "純潔・威厳", color: "#fcfcf8", colorName: "白", season: "初夏",
+      msg: "まっすぐで気高い心を持ち、不正やごまかしを嫌います。その毅然とした姿勢が、周囲にとっての基準になっていることもあるでしょう。" },
+    { name: "ラベンダー", reading: "らべんだー", word: "沈黙・期待", color: "#a493cc", colorName: "藤紫", season: "初夏",
+      msg: "落ち着いた雰囲気で、人の心をやわらげる力があります。言葉数は多くなくとも、そばにいるだけで安心を与えられる人です。" },
+    { name: "花菖蒲", reading: "はなしょうぶ", word: "優しい心・信頼", color: "#6a5fa8", colorName: "深紫", season: "梅雨",
+      msg: "静かな優しさと、揺るがない誠実さを持っています。困ったときに真っ先に思い出してもらえる、そんな信頼を築いていける人です。" }
+  ],
+  7: [
+    { name: "向日葵", reading: "ひまわり", word: "あなただけを見つめる・憧れ", color: "#f2b30f", colorName: "向日葵色", season: "盛夏",
+      msg: "明るく素直で、まっすぐに人や物事へ向かっていける人です。その熱量が周りを元気づけ、自然と中心的な存在になっていきます。" },
+    { name: "朝顔", reading: "あさがお", word: "固い絆・愛情", color: "#5b7fc7", colorName: "縹色", season: "夏",
+      msg: "一度心を許した相手とは、長く深く結びつく人です。日々の小さな積み重ねを大切にする姿勢が、確かな信頼をつくっていきます。" },
+    { name: "蓮", reading: "はす", word: "清らかな心・神聖", color: "#f0b9c9", colorName: "蓮色", season: "盛夏",
+      msg: "どんな環境にいても、自分の清らかさを保てる強さがあります。周りに染まらず、自分の価値観で選び取っていける人です。" },
+    { name: "桔梗", reading: "ききょう", word: "永遠の愛・誠実", color: "#6b6bb3", colorName: "桔梗色", season: "夏から秋",
+      msg: "約束を守り、言葉に責任を持つ人です。派手な演出はなくとも、その一貫した誠実さが最も強い魅力になっています。" },
+    { name: "睡蓮", reading: "すいれん", word: "信頼・清純な心", color: "#f5d0dd", colorName: "淡紅", season: "夏",
+      msg: "静かな水面のように、感情を穏やかに保てる人です。動じない落ち着きがあり、周囲にとって頼れる存在になります。" }
+  ],
+  8: [
+    { name: "百日紅", reading: "さるすべり", word: "雄弁・愛敬", color: "#e07a9e", colorName: "躑躅色", season: "盛夏",
+      msg: "話し上手で、場をなごませる愛嬌を持っています。長く咲き続ける花のように、粘り強さと持久力も併せ持つ人です。" },
+    { name: "鬼灯", reading: "ほおずき", word: "自然美・心の平安", color: "#e8622c", colorName: "柿色", season: "夏",
+      msg: "飾らない自然体の魅力を持つ人です。無理をしないぶん長続きし、周囲にも安心感を与えます。" },
+    { name: "芙蓉", reading: "ふよう", word: "繊細な美・しとやかさ", color: "#f0a8c0", colorName: "撫子色", season: "夏から秋",
+      msg: "細やかな感性と、たおやかな品を持っています。移り変わる状況にも柔らかく対応でき、無理なく自分らしさを保てる人です。" },
+    { name: "ダリア", reading: "だりあ", word: "華麗・優美", color: "#c23a5e", colorName: "薔薇色", season: "夏から秋",
+      msg: "存在感があり、装いや振る舞いに自分の美意識をきちんと持っている人です。その一貫した美学が、周囲を惹きつけます。" },
+    { name: "露草", reading: "つゆくさ", word: "尊敬・なつかしい関係", color: "#4a76bd", colorName: "露草色", season: "夏",
+      msg: "控えめでありながら、人を敬う心を忘れない人です。久しぶりに会っても変わらない距離感を保てる、得がたい性質を持っています。" }
+  ],
+  9: [
+    { name: "萩", reading: "はぎ", word: "思案・柔軟な精神", color: "#b9628f", colorName: "紫紅", season: "秋",
+      msg: "しなやかに考えを切り替えられる、柔軟な知性の持ち主です。頑なにならず、状況に応じた最善を選べる人です。" },
+    { name: "コスモス", reading: "こすもす", word: "乙女の真心・調和", color: "#eb9ec0", colorName: "桃色", season: "秋",
+      msg: "素直で飾らない心を持ち、人との調和を自然に生み出せる人です。風に揺れながらも折れない、しなやかな強さがあります。" },
+    { name: "竜胆", reading: "りんどう", word: "誠実・正義感", color: "#4a5aa8", colorName: "瑠璃色", season: "秋",
+      msg: "曲がったことを嫌い、筋を通す人です。その真面目さは時に自分を縛りますが、周囲からの信頼はどこまでも厚くなります。" },
+    { name: "撫子", reading: "なでしこ", word: "純愛・無邪気", color: "#f0a3b8", colorName: "撫子色", season: "秋",
+      msg: "素朴なやさしさと、可憐な芯の強さを併せ持つ人です。控えめに見えて、大事な場面ではきちんと自分を通せます。" },
+    { name: "鶏頭", reading: "けいとう", word: "おしゃれ・情愛", color: "#cc3b33", colorName: "紅緋", season: "秋",
+      msg: "自分の好きなものがはっきりしていて、装いや暮らしに個性が出る人です。情の深さも持ち合わせ、大切な人には惜しみなく尽くします。" }
+  ],
+  10: [
+    { name: "金木犀", reading: "きんもくせい", word: "謙虚・真実", color: "#f2a03d", colorName: "橙色", season: "秋",
+      msg: "自分を大きく見せようとしない、控えめな人です。それでいて存在は香りのように伝わり、気づけば多くの人に慕われています。" },
+    { name: "菊", reading: "きく", word: "高潔・高貴", color: "#f3d84e", colorName: "黄金色", season: "秋",
+      msg: "気品と誇りを持ち、安易な妥協をしない人です。長く咲き続ける花のように、じっくりと成果を積み上げていきます。" },
+    { name: "ガーベラ", reading: "がーべら", word: "希望・前進", color: "#ef7a3d", colorName: "杏色", season: "秋",
+      msg: "前向きで、どんな状況からも次の一手を見つけられる人です。その明るさが、周囲にとっての希望になることもあります。" },
+    { name: "秋明菊", reading: "しゅうめいぎく", word: "忍耐・淡い期待", color: "#eddde8", colorName: "白練", season: "秋",
+      msg: "静かに待つことができる、辛抱強い人です。すぐに結果が出なくても腐らず、時が満ちるのを見極められます。" },
+    { name: "薄", reading: "すすき", word: "生命力・活力", color: "#c8b48a", colorName: "砂色", season: "秋",
+      msg: "しなやかに風を受け流しながら、根はしっかりと張っている人です。どんな環境でも生き抜ける、たくましさを持っています。" }
+  ],
+  11: [
+    { name: "山茶花", reading: "さざんか", word: "困難に打ち勝つ・ひたむきさ", color: "#e0648c", colorName: "躑躅色", season: "初冬",
+      msg: "寒さの中でも咲く花のように、逆境でこそ本領を発揮する人です。地道にひたむきに続ける力が、あなたの最大の武器になります。" },
+    { name: "シクラメン", reading: "しくらめん", word: "内気・はにかみ", color: "#d94f7a", colorName: "紅梅色", season: "冬",
+      msg: "はじめは控えめでも、打ち解けると深い情を見せる人です。その落差が、相手にとっての大きな魅力になります。" },
+    { name: "石蕗", reading: "つわぶき", word: "困難に負けない・謙譲", color: "#efc341", colorName: "山吹色", season: "初冬",
+      msg: "目立たない場所でも、しっかりと自分の役目を果たす人です。誰が見ていなくても手を抜かない誠実さが、後から必ず報われます。" },
+    { name: "千日紅", reading: "せんにちこう", word: "色あせぬ愛・不朽", color: "#c96c9e", colorName: "紅紫", season: "秋から初冬",
+      msg: "一度決めた気持ちが長く変わらない人です。時間が経つほど価値が増していく、そんな関係や仕事を築いていけます。" },
+    { name: "野菊", reading: "のぎく", word: "清爽・可憐", color: "#c3b9dd", colorName: "藤鼠", season: "秋",
+      msg: "気取らず、さっぱりとした人柄で好かれる人です。飾らないからこそ、まわりが本音で接してくれます。" }
+  ],
+  12: [
+    { name: "ポインセチア", reading: "ぽいんせちあ", word: "祝福する・幸運を祈る", color: "#c62a35", colorName: "深緋", season: "冬",
+      msg: "人の幸せを心から喜べる、あたたかい人です。その祝福の気持ちが巡って、あなた自身にも良い縁を運んできます。" },
+    { name: "柊", reading: "ひいらぎ", word: "先見の明・用心深さ", color: "#f2f0e6", colorName: "白磁", season: "冬",
+      msg: "先を読む力があり、危ういものを直感で見分けられる人です。その慎重さが、何度もあなたを守ってくれるでしょう。" },
+    { name: "カトレア", reading: "かとれあ", word: "優美な女性・魅力", color: "#c48ac4", colorName: "菖蒲色", season: "冬",
+      msg: "華やかで存在感がありながら、下品にならない品を持つ人です。自分をどう見せるかを心得ている、洗練された感覚の持ち主です。" },
+    { name: "クリスマスローズ", reading: "くりすますろーず", word: "追憶・私の不安をやわらげて", color: "#c5c0a8", colorName: "利休白茶", season: "冬",
+      msg: "過ぎたことを大切に胸にしまっておける、情の深い人です。その記憶が、迷ったときのあなたの道しるべになります。" },
+    { name: "寒椿", reading: "かんつばき", word: "謙譲・愛嬌", color: "#d1355a", colorName: "今様色", season: "真冬",
+      msg: "控えめでありながら、人に好かれる愛嬌を持つ人です。厳しい時期ほど、あなたの存在が周りの支えになります。" }
+  ]
+};
+
+// ---- 今日のお告げ ----
+const ORACLES = [
+  "今日は、あなたの花がいちばん美しく見える日です。人の目を気にせず、好きな装いで出かけてみてください。",
+  "咲き急がなくて大丈夫です。今日は根を伸ばす日と考えて、目の前のことを静かに整えてください。",
+  "水をやるように、誰かにひと言かけてみてください。その小さな行いが、思わぬところで返ってきます。",
+  "今日は日当たりのよい場所へ。少しでも外の空気を吸うと、気持ちの向きが変わります。",
+  "枯れた葉を落とすように、抱えているものをひとつ手放してみてください。ずいぶん身軽になります。",
+  "つぼみのままで構いません。今日は急かされても、自分の時期を信じて待ってください。",
+  "隣に咲く花と比べないこと。あなたにはあなたの咲き方があります。",
+  "今日は誰かの支えになる日です。頼られたら、遠慮せず受け止めてあげてください。",
+  "手を動かすと運が向きます。作りかけのもの、途中のものに少しだけ触れてみてください。",
+  "香りのあるものを身近に置いてみてください。心のざわつきが静まっていきます。",
+  "今日は少し休んでよい日です。しおれる前に、水と眠りを十分に取ってください。",
+  "思いがけない場所から、うれしい知らせが届きそうです。連絡はこまめに確かめて。",
+  "一度断られたことに、もう一度だけ手を伸ばしてみてください。今日は風向きが違います。",
+  "身のまわりを少し整えると、そのまま気持ちも整います。まずは一か所だけで十分です。",
+  "今日は聞き役にまわると吉。相手の言葉の中に、あなたへの答えが混じっています。",
+  "遠くの目標より、今日届く一輪を大切に。積み重ねが、いずれ花畑になります。",
+  "誰かにもらった優しさを、今日は別の誰かへ渡してみてください。良い循環が生まれます。",
+  "迷ったら、心が少しでも軽くなるほうを選んでください。今日はそれが正解です。"
+];
+
+// ---- 日本時間の日付 ----
+const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+const TY = jstNow.getUTCFullYear();
+const TM = jstNow.getUTCMonth() + 1;
+const TD = jstNow.getUTCDate();
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hashSeed(x) {
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  return (x ^ (x >>> 16)) >>> 0;
+}
+
+// ---- 各月の日数 ----
+const DAYS_IN_MONTH = { 1:31, 2:29, 3:31, 4:30, 5:31, 6:30, 7:31, 8:31, 9:30, 10:31, 11:30, 12:31 };
+
+// ---- 選択肢を作る ----
+const selMonth = document.getElementById("selMonth");
+const selDay = document.getElementById("selDay");
+
+for (let m = 1; m <= 12; m++) {
+  const o = document.createElement("option");
+  o.value = m; o.textContent = m;
+  selMonth.appendChild(o);
+}
+
+function buildDays() {
+  const m = Number(selMonth.value);
+  const keep = Number(selDay.value) || 1;
+  const max = DAYS_IN_MONTH[m];
+  selDay.innerHTML = "";
+  for (let d = 1; d <= max; d++) {
+    const o = document.createElement("option");
+    o.value = d; o.textContent = d;
+    selDay.appendChild(o);
+  }
+  selDay.value = String(Math.min(keep, max));
+}
+selMonth.addEventListener("change", buildDays);
+buildDays();
+
+// ---- 生まれた日から花を決める(月を5つの帯に分ける) ----
+function flowerFor(month, day) {
+  const list = FLOWERS[month];
+  const max = DAYS_IN_MONTH[month];
+  const idx = Math.min(list.length - 1, Math.floor((day - 1) * list.length / max));
+  return list[idx];
+}
+
+// ---- 花を描く ----
+function drawBloom(color) {
+  const bloom = document.getElementById("bloom");
+  bloom.querySelectorAll(".petal").forEach(function (p) { p.remove(); });
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement("div");
+    p.className = "petal";
+    const rot = i * 45;
+    p.style.setProperty("--rot", rot + "deg");
+    p.style.background = "linear-gradient(180deg, " + color + " 0%, " + color + "cc 100%)";
+    p.style.animationDelay = (i * 0.055) + "s";
+    bloom.insertBefore(p, bloom.firstChild);
+  }
+}
+
+const inputBlock = document.getElementById("inputBlock");
+const resultArea = document.getElementById("resultArea");
+
+function cast() {
+  const m = Number(selMonth.value);
+  const d = Number(selDay.value);
+  const f = flowerFor(m, d);
+
+  document.getElementById("bornLabel").textContent = m + "月" + d + "日 生まれ";
+  document.getElementById("flowerName").textContent = f.name;
+  document.getElementById("flowerReading").textContent = f.reading;
+  document.getElementById("hanakotoba").textContent = f.word;
+  document.getElementById("personality").textContent = f.msg;
+  document.getElementById("flowerColor").innerHTML =
+    '<span class="swatch" style="background:' + f.color + '"></span>' + f.colorName;
+  document.getElementById("flowerSeason").textContent = f.season;
+
+  // 今日のお告げ(日付と誕生日で固定。同じ日は何度見ても同じ)
+  const seed = hashSeed((TY * 10000 + TM * 100 + TD) * 131 + (m * 100 + d) * 7);
+  const rng = mulberry32(seed);
+  document.getElementById("oracle").textContent = ORACLES[Math.floor(rng() * ORACLES.length)];
+  document.getElementById("todayNote").textContent = TY + "年" + TM + "月" + TD + "日のお告げ";
+
+  drawBloom(f.color);
+
+  try { localStorage.setItem("birthflower_md", m + "-" + d); } catch (e) {}
+
+  inputBlock.style.display = "none";
+  resultArea.classList.add("show");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.getElementById("castBtn").addEventListener("click", cast);
+
+document.getElementById("retryBtn").addEventListener("click", function () {
+  resultArea.classList.remove("show");
+  inputBlock.style.display = "flex";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+// 前回選んだ月日を復元
+try {
+  const saved = localStorage.getItem("birthflower_md");
+  if (saved) {
+    const p = saved.split("-");
+    const m = Number(p[0]), d = Number(p[1]);
+    if (m >= 1 && m <= 12 && d >= 1 && d <= DAYS_IN_MONTH[m]) {
+      selMonth.value = String(m);
+      buildDays();
+      selDay.value = String(d);
+      cast();
+    }
+  }
+} catch (e) {}
+</script>
+</body>
+</html>

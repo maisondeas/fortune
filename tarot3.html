@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>タロット3枚引き ― 過去・現在・未来</title>
+<meta name="description" content="3枚のカードで、過去から未来への流れを読み解きます。">
+<style>
+  :root {
+    --sepia1: #2c2019;
+    --sepia2: #3f2f24;
+    --sepia3: #211710;
+    --ivory: #f0e6d6;
+    --ivory-soft: rgba(240, 230, 214, 0.74);
+    --ivory-faint: rgba(240, 230, 214, 0.44);
+    --sage: #93a68b;
+    --sage-deep: #6f8168;
+    --line: rgba(240, 230, 214, 0.22);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: linear-gradient(172deg, var(--sepia1) 0%, var(--sepia2) 52%, var(--sepia3) 100%);
+    color: var(--ivory);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+  }
+  /* 卓の上の灯り */
+  .lamp {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 70% 34% at 50% 16%, rgba(240, 230, 214, 0.12), transparent 64%),
+      radial-gradient(circle at 8% 94%, rgba(0, 0, 0, 0.3), transparent 52%);
+  }
+  .grain {
+    position: absolute;
+    background: var(--ivory);
+    border-radius: 50%;
+    opacity: 0.08;
+  }
+  main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 470px;
+    padding: 38px 18px 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--ivory-soft);
+    margin-top: 10px;
+    text-align: center;
+    line-height: 1.7;
+  }
+  .divider {
+    width: 96px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--sage), transparent);
+    margin: 22px auto 24px;
+  }
+  .question-block { width: 100%; max-width: 300px; margin-bottom: 22px; }
+  .question-block label {
+    display: block;
+    font-size: 12.5px;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    color: var(--ivory-soft);
+    text-align: center;
+  }
+  #question {
+    width: 100%;
+    font-size: 16px;
+    font-family: inherit;
+    padding: 11px 13px;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--ivory);
+    outline: none;
+    text-align: center;
+  }
+  #question::placeholder { color: rgba(240, 230, 214, 0.38); }
+  #question:focus { border-color: var(--sage); }
+  .guide {
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    color: var(--ivory-soft);
+    margin-bottom: 18px;
+    text-align: center;
+    min-height: 20px;
+  }
+  /* 3枚の並び */
+  .spread {
+    display: flex;
+    gap: 9px;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  .slot { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  .slot-label {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    color: var(--sage);
+    margin-bottom: 9px;
+  }
+  .card {
+    width: 100%;
+    aspect-ratio: 100 / 179;
+    perspective: 900px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card.flipped { cursor: default; }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.85s cubic-bezier(0.4, 0.1, 0.2, 1);
+    transform-style: preserve-3d;
+  }
+  .card.flipped .card-inner { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+  }
+  .card-back {
+    background:
+      radial-gradient(circle at 50% 42%, rgba(147, 166, 139, 0.2), transparent 62%),
+      linear-gradient(165deg, #4a3728, #2a1e16);
+    border: 1.5px solid var(--sage-deep);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card-back::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border: 1px solid rgba(147, 166, 139, 0.4);
+    border-radius: 5px;
+  }
+  .back-mark {
+    font-size: 26px;
+    color: var(--sage);
+    opacity: 0.85;
+    text-shadow: 0 0 14px rgba(147, 166, 139, 0.5);
+  }
+  .card.waiting .card-back { animation: breathe 2.4s ease-in-out infinite; }
+  @keyframes breathe {
+    0%, 100% { box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
+    50% { box-shadow: 0 6px 26px rgba(147, 166, 139, 0.4); }
+  }
+  .card-front {
+    transform: rotateY(180deg);
+    border: 1.5px solid var(--sage-deep);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    background: #efe4c8;
+  }
+  .card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .card-img.reversed { transform: rotate(180deg); }
+  .pos-tag {
+    position: absolute;
+    left: 50%;
+    bottom: 5px;
+    transform: translateX(-50%);
+    background: rgba(33, 23, 16, 0.85);
+    color: var(--ivory);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(147, 166, 139, 0.5);
+    white-space: nowrap;
+  }
+  /* 読み解き */
+  .readings { width: 100%; margin-top: 20px; }
+  .reading {
+    display: none;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--sage-deep);
+    border-radius: 8px;
+    padding: 16px 17px;
+    margin-bottom: 12px;
+    animation: fadeUp 0.55s ease both;
+  }
+  .reading.show { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reading, .summary { animation: none !important; }
+    .card-inner { transition: none !important; }
+    .card.waiting .card-back { animation: none; }
+  }
+  .reading-head {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .reading-pos {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--sage);
+  }
+  .reading-card {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .reading-ori { font-size: 11.5px; color: var(--ivory-faint); letter-spacing: 0.12em; }
+  .reading-kw {
+    display: inline-block;
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    color: var(--sage);
+    border-bottom: 1px solid rgba(147, 166, 139, 0.35);
+    padding-bottom: 3px;
+    margin-bottom: 11px;
+  }
+  .reading-text {
+    font-size: 14.5px;
+    line-height: 1.9;
+    letter-spacing: 0.03em;
+    color: rgba(240, 230, 214, 0.94);
+  }
+  /* 総括 */
+  .summary {
+    display: none;
+    width: 100%;
+    background: rgba(147, 166, 139, 0.1);
+    border: 1px solid rgba(147, 166, 139, 0.32);
+    border-radius: 10px;
+    padding: 18px 19px;
+    margin-top: 6px;
+    animation: fadeUp 0.6s ease 0.15s both;
+  }
+  .summary.show { display: block; }
+  .summary-label {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 12.5px;
+    letter-spacing: 0.22em;
+    color: var(--sage);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .summary-label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(147, 166, 139, 0.3);
+  }
+  .summary-text {
+    font-size: 14.5px;
+    line-height: 1.95;
+    letter-spacing: 0.03em;
+  }
+  .question-echo {
+    font-size: 12.5px;
+    color: var(--ivory-faint);
+    margin-bottom: 14px;
+    text-align: center;
+    word-break: break-word;
+    display: none;
+  }
+  .question-echo.show { display: block; }
+  button.retry {
+    margin-top: 26px;
+    font-size: 16px;
+    font-family: inherit;
+    letter-spacing: 0.1em;
+    padding: 12px 34px;
+    border-radius: 999px;
+    border: 1px solid var(--sage-deep);
+    background: transparent;
+    color: var(--ivory);
+    cursor: pointer;
+    transition: background 0.3s;
+    -webkit-tap-highlight-color: transparent;
+    display: none;
+  }
+  button.retry.show { display: inline-block; }
+  button.retry:active { background: rgba(147, 166, 139, 0.2); }
+  footer {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    color: var(--ivory-faint);
+    padding: 0 16px 26px;
+    text-align: center;
+    line-height: 1.8;
+  }
+  @media (min-width: 600px) {
+    h1 { font-size: 28px; }
+    .spread { gap: 12px; }
+    .reading-card { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="lamp" id="lamp"></div>
+<main>
+  <h1>タロット 3枚引き</h1>
+  <p class="subtitle">過去・現在・未来。<br>3枚が、あなたの流れを語ります</p>
+  <div class="divider"></div>
+
+  <div class="question-block">
+    <label for="question">占いたいこと(入力は任意です)</label>
+    <input type="text" id="question" placeholder="例:今の仕事を続けるべきか" maxlength="60">
+  </div>
+
+  <p class="guide" id="guide">心の中で問いを思い浮かべて、カードをめくってください</p>
+
+  <div class="spread" id="spread"></div>
+
+  <p class="question-echo" id="questionEcho"></p>
+  <div class="readings" id="readings"></div>
+  <div class="summary" id="summary">
+    <div class="summary-label">全 体 の 流 れ</div>
+    <p class="summary-text" id="summaryText"></p>
+  </div>
+
+  <button class="retry" id="retryBtn">もう一度引く</button>
+</main>
+<footer>
+  ※占い結果は娯楽としてお楽しみください。<br>
+  大切な決断は、ご自身の気持ちを一番に。
+</footer>
+
+<script>
+// ---- 卓の灯りの粒 ----
+(function () {
+  const wrap = document.getElementById("lamp");
+  for (let i = 0; i < 30; i++) {
+    const g = document.createElement("div");
+    g.className = "grain";
+    const size = Math.random() * 2 + 1;
+    g.style.width = size + "px";
+    g.style.height = size + "px";
+    g.style.left = Math.random() * 100 + "%";
+    g.style.top = Math.random() * 100 + "%";
+    wrap.appendChild(g);
+  }
+})();
+
+// ---- 大アルカナ22枚。位置ごとの読み ----
+// past=過去 / now=現在 / fut=未来
+const CARDS = [
+  { name: "愚者", img: "00.jpg",
+    up: { kw: "出発・自由", past: "何も持たずに飛び込んだ、あの身軽な選択が今につながっています。", now: "常識にとらわれず、心の赴くまま動いてよいときです。", fut: "思いがけない新天地へ。恐れずに一歩を踏み出せます。" },
+    rev: { kw: "無計画・迷走", past: "準備が足りないまま動いたことが、少し尾を引いているようです。", now: "勢いだけで進むと足元をすくわれます。一度立ち止まってください。", fut: "見通しを立てないままだと、遠回りになりそうです。" } },
+  { name: "魔術師", img: "01.jpg",
+    up: { kw: "創造・才覚", past: "手持ちの力をうまく使い、道を切り開いてきました。", now: "必要なものはすでに揃っています。行動に移すときです。", fut: "あなたの工夫が形になり、望む結果を引き寄せます。" },
+    rev: { kw: "準備不足・空回り", past: "力を出しきれないまま終わったことが、心残りになっています。", now: "まだ材料が足りません。焦らず揃えることを優先してください。", fut: "見せかけだけで進めると、後で立ち行かなくなります。" } },
+  { name: "女教皇", img: "02.jpg",
+    up: { kw: "直感・静けさ", past: "静かに考えを深めた時間が、今のあなたを支えています。", now: "答えは内側にあります。ひとりの時間を作ってください。", fut: "直感が正しい道を教えてくれます。理屈より感覚を信じて。" },
+    rev: { kw: "思い込み・感情の乱れ", past: "思い込みで判断したことが、すれ違いを生んだようです。", now: "感情が判断を曇らせています。今は結論を急がないでください。", fut: "冷静さを欠いたままだと、誤解が広がりそうです。" } },
+  { name: "女帝", img: "03.jpg",
+    up: { kw: "豊かさ・受容", past: "惜しみなく注いだ愛情が、今の実りにつながっています。", now: "与えるほど返ってくるとき。心を開いて構いません。", fut: "豊かな実りが待っています。育てたものが花開きます。" },
+    rev: { kw: "余裕のなさ・過保護", past: "尽くしすぎて、自分をすり減らしてしまったようです。", now: "余裕を失っています。まず自分を満たしてください。", fut: "無理を重ねると、大切なものまで枯れてしまいます。" } },
+  { name: "皇帝", img: "04.jpg",
+    up: { kw: "統率・安定", past: "自分で決め、責任を持って進めてきた実績があります。", now: "主導権を握ってよいときです。堂々と構えてください。", fut: "揺るぎない基盤が築かれ、周囲からも認められます。" },
+    rev: { kw: "強引さ・頑固", past: "押し通しすぎたことが、しこりとして残っているようです。", now: "力任せでは反発を招きます。柔らかさを取り戻してください。", fut: "譲らないままだと、孤立してしまうかもしれません。" } },
+  { name: "教皇", img: "05.jpg",
+    up: { kw: "導き・信頼", past: "誰かの助言や、守ってきた筋道があなたを支えてきました。", now: "王道を選ぶのが吉。信頼できる人に相談してください。", fut: "正しい道筋が示され、安心して進めるようになります。" },
+    rev: { kw: "形式ばかり・束縛", past: "周囲に合わせすぎて、本音を飲み込んできたようです。", now: "常識に縛られています。自分の考えを大切にしてください。", fut: "無理に型にはまると、息苦しさが増していきます。" } },
+  { name: "恋人", img: "06.jpg",
+    up: { kw: "選択・響き合い", past: "心が動くほうを選んだことが、良い縁を運んできました。", now: "ときめく方を選んで正解です。楽しさが流れを作ります。", fut: "心通じ合う相手や機会に恵まれていきます。" },
+    rev: { kw: "迷い・誘惑", past: "曖昧な選択が、今の迷いのもとになっているようです。", now: "目移りしやすいとき。「なんとなく」で決めないでください。", fut: "決めきれないままだと、機会が過ぎてしまいます。" } },
+  { name: "戦車", img: "07.jpg",
+    up: { kw: "前進・勝利", past: "迷わず進んだ行動力が、ここまで運んできました。", now: "勢いに乗ってよいときです。速さが味方します。", fut: "障害を越えて、望む場所へたどり着けます。" },
+    rev: { kw: "空回り・焦り", past: "焦って動いたことが、噛み合わなさを生んだようです。", now: "方向を確かめずに走っています。一度速度を落としてください。", fut: "このままでは、力を使い果たしてしまいます。" } },
+  { name: "力", img: "08.jpg",
+    up: { kw: "忍耐・内なる強さ", past: "粘り強く向き合った経験が、あなたを強くしてきました。", now: "焦らず穏やかに。あなたの静かな強さが効いてきます。", fut: "手に負えないと思えたものを、味方に変えられます。" },
+    rev: { kw: "弱気・自信喪失", past: "自信を失う出来事が、今も影を落としているようです。", now: "不安に飲まれています。無理をしないでください。", fut: "弱気のままだと、できることまで手放してしまいます。" } },
+  { name: "隠者", img: "09.jpg",
+    up: { kw: "内省・探究", past: "ひとりで考え抜いた時間が、確かな軸になっています。", now: "答えを外に求めず、静かに見つめ直すときです。", fut: "深めた思索が、進むべき道を照らしてくれます。" },
+    rev: { kw: "孤立・視野の狭さ", past: "閉じこもりすぎて、機会を逃したところがあります。", now: "考えすぎて視野が狭まっています。一度離れてみてください。", fut: "ひとりで抱え続けると、出口が見えなくなります。" } },
+  { name: "運命の輪", img: "10.jpg",
+    up: { kw: "転機・好機", past: "思いがけない巡り合わせが、流れを変えてきました。", now: "追い風が吹いています。今が動くタイミングです。", fut: "大きな転機が訪れます。流れに乗ってください。" },
+    rev: { kw: "停滞・時期尚早", past: "タイミングが合わず、うまく運ばなかったことがあります。", now: "今は流れが向いていません。焦らず待つのが賢明です。", fut: "無理に動かそうとすると、かえって遠回りになります。" } },
+  { name: "正義", img: "11.jpg",
+    up: { kw: "公平・決断", past: "筋を通した判断が、今の信頼につながっています。", now: "感情でなく事実で判断を。冷静に比べてください。", fut: "公正な結論が出て、納得のいく形に落ち着きます。" },
+    rev: { kw: "偏り・不公平", past: "どこかで不公平を飲み込んだままになっているようです。", now: "判断に偏りがあります。一度立場を変えて見直してください。", fut: "歪みを放置すると、後で大きな綻びになります。" } },
+  { name: "吊るされた男", img: "12.jpg",
+    up: { kw: "忍耐・視点の転換", past: "動けない時期があったからこそ、見えたものがあります。", now: "今は待つとき。この停滞は無駄ではありません。", fut: "視点が変わり、物事の意味が反転して見えてきます。" },
+    rev: { kw: "徒労・我慢の限界", past: "報われない努力が、疲れとして残っているようです。", now: "我慢が限界に近づいています。手放すものを探してください。", fut: "このまま耐え続けても、実りは薄いかもしれません。" } },
+  { name: "死神", img: "13.jpg",
+    up: { kw: "終わり・再生", past: "ひとつの区切りを経て、今の場所に立っています。", now: "終わらせるべきものがあります。きちんと区切りをつけて。", fut: "終わりの先に、新しい始まりが用意されています。" },
+    rev: { kw: "未練・停滞", past: "断ち切れないものが、今も足を引いているようです。", now: "過去に引きずられています。少しずつ手放してください。", fut: "執着を残すと、次の流れが入ってきません。" } },
+  { name: "節制", img: "14.jpg",
+    up: { kw: "調和・ほどよさ", past: "無理のないペースを守ったことが、今を支えています。", now: "バランスが鍵です。穏やかに続けてください。", fut: "過不足のない、心地よい状態に整っていきます。" },
+    rev: { kw: "不均衡・過不足", past: "どこかで無理やムラが出て、歪みが生じたようです。", now: "リズムが乱れています。暮らしから整え直してください。", fut: "偏りを正さないと、どこかに無理が出てきます。" } },
+  { name: "悪魔", img: "15.jpg",
+    up: { kw: "執着・誘惑", past: "断ち切れない何かが、今の状況を形づくっています。", now: "楽な道や誘惑に注意。やめられないものが判断を曇らせます。", fut: "このままだと、抜け出しにくい形に固まっていきます。" },
+    rev: { kw: "解放・断ち切る", past: "縛られていたものから、少しずつ抜け出してきました。", now: "断ち切る力が芽生えています。勇気を持ってください。", fut: "しがらみが解け、自由を取り戻していけます。" } },
+  { name: "塔", img: "16.jpg",
+    up: { kw: "崩壊・気づき", past: "予期せぬ出来事が、前提を大きく変えてしまいました。", now: "土台から見直すときです。壊れることを恐れないでください。", fut: "一度崩れますが、その先に本当に必要なものが残ります。" },
+    rev: { kw: "先送り・小さな綻び", past: "気づいていた問題から、目をそらしてきたようです。", now: "綻びが広がっています。小さいうちに手を打ってください。", fut: "先送りするほど、後の負担が大きくなります。" } },
+  { name: "星", img: "17.jpg",
+    up: { kw: "希望・理想", past: "諦めずに抱き続けた願いが、今のあなたを導いています。", now: "希望の光が差しています。理想を持ち続けてください。", fut: "願いが少しずつ現実に近づいていきます。" },
+    rev: { kw: "失望・理想の重さ", past: "期待が外れた経験が、心に影を残しているようです。", now: "理想が高すぎて疲れています。目標を少し手前に置いて。", fut: "望みを見失うと、進む力まで削がれてしまいます。" } },
+  { name: "月", img: "18.jpg",
+    up: { kw: "不安・見えないもの", past: "はっきりしないまま過ぎたことが、今も引っかかっています。", now: "まだ見えていない事情があります。急がないでください。", fut: "霧が晴れるまで、判断は保留にするのが賢明です。" },
+    rev: { kw: "霧が晴れる・真実", past: "隠れていたことが、少しずつ明らかになってきました。", now: "不安が薄れていきます。落ち着いて見極めてください。", fut: "真実が見え、安心して進めるようになります。" } },
+  { name: "太陽", img: "19.jpg",
+    up: { kw: "成功・喜び", past: "素直に進んだことが、明るい結果を呼んできました。", now: "文句なしの好調です。堂々と楽しんでください。", fut: "明るい成功と、素直な喜びが待っています。" },
+    rev: { kw: "自信のなさ・曇り", past: "本来の良さを出しきれずにきたところがあります。", now: "前向きさが影に隠れています。小さな成功を積んでください。", fut: "自信を取り戻せば、光は必ず戻ってきます。" } },
+  { name: "審判", img: "20.jpg",
+    up: { kw: "復活・再挑戦", past: "一度終わったことが、形を変えて戻ってきています。", now: "再挑戦に良いときです。諦めたことをもう一度。", fut: "過去の努力が呼び起こされ、報われる形になります。" },
+    rev: { kw: "繰り返し・停滞", past: "同じ失敗を繰り返してきたところがあるようです。", now: "やり方を変えないと、結果も変わりません。", fut: "過去と決別しないと、同じ場所に留まります。" } },
+  { name: "世界", img: "21.jpg",
+    up: { kw: "完成・達成", past: "積み重ねてきたことが、ひとつの形になっています。", now: "物事が満ちるときです。成果を受け取ってください。", fut: "望んだ場所へたどり着き、区切りを迎えられます。" },
+    rev: { kw: "未完成・あと一歩", past: "あと少しのところで、止まってしまったことがあります。", now: "最後のひとつが埋まっていません。詰めを丁寧に。", fut: "もうひと押しで完成します。投げ出さないでください。" } }
+];
+
+const POSITIONS = [
+  { label: "過 去", key: "past" },
+  { label: "現 在", key: "now" },
+  { label: "未 来", key: "fut" }
+];
+
+// ---- 正位置の枚数ごとの総括 ----
+const SUMMARIES = {
+  3: [ "三枚とも正位置。流れはしっかりとあなたに味方しています。迷わず、今の方向で進んで構いません。",
+       "澄んだ配置です。過去から未来まで、無理のない良い流れがつながっています。自信を持ってください。",
+       "文句のない並びです。あなたの選んできた道が、そのまま良い形へ続いていきます。" ],
+  2: [ "おおむね良い流れです。気がかりな一枚が示すところだけ、丁寧に扱えば心配ありません。",
+       "追い風の中に、小さな注意点がひとつ。そこさえ押さえておけば、全体は順調に運びます。",
+       "前向きな配置です。逆位置の一枚は、進むうえでの気をつけどころだと考えてください。" ],
+  1: [ "揺らぎのある流れです。焦って決めようとせず、まず足元を整えることを優先してください。",
+       "課題の多い配置ですが、正位置の一枚が抜け道を示しています。そこを手がかりにしてください。",
+       "今は無理が利きにくいときです。ひとつずつほどいていけば、必ず流れは変わります。" ],
+  0: [ "三枚とも逆位置。今は進むより、立ち止まって整えるときだと出ています。",
+       "流れが滞っています。無理に動かそうとせず、力を蓄えることに専念してください。",
+       "全体に停滞の色が濃い配置です。休むことも、立派な前進のひとつだと考えてください。" ]
+};
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ---- 画面を組み立てる ----
+const spread = document.getElementById("spread");
+const readings = document.getElementById("readings");
+const guide = document.getElementById("guide");
+const summary = document.getElementById("summary");
+const retryBtn = document.getElementById("retryBtn");
+const questionEcho = document.getElementById("questionEcho");
+
+let draw = [];        // 引いた3枚
+let flipped = [false, false, false];
+
+function setup() {
+  // 重複しない3枚を選ぶ
+  const pool = CARDS.slice();
+  draw = [];
+  for (let i = 0; i < 3; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    const card = pool.splice(idx, 1)[0];
+    draw.push({ card: card, reversed: Math.random() < 0.5 });
+  }
+  flipped = [false, false, false];
+
+  spread.innerHTML = "";
+  readings.innerHTML = "";
+  summary.classList.remove("show");
+  retryBtn.classList.remove("show");
+  questionEcho.classList.remove("show");
+  guide.textContent = "心の中で問いを思い浮かべて、カードをめくってください";
+
+  POSITIONS.forEach(function (pos, i) {
+    const slot = document.createElement("div");
+    slot.className = "slot";
+
+    const label = document.createElement("div");
+    label.className = "slot-label";
+    label.textContent = pos.label;
+
+    const card = document.createElement("div");
+    card.className = "card waiting";
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-label", pos.label + "のカードをめくる");
+    card.innerHTML =
+      '<div class="card-inner">' +
+        '<div class="card-face card-back"><div class="back-mark">✦</div></div>' +
+        '<div class="card-face card-front">' +
+          '<img class="card-img" alt="">' +
+          '<div class="pos-tag"></div>' +
+        "</div>" +
+      "</div>";
+
+    card.addEventListener("click", function () { flip(i, card); });
+    card.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(i, card); }
+    });
+
+    slot.appendChild(label);
+    slot.appendChild(card);
+    spread.appendChild(slot);
+
+    // 読み解きの枠を先に作っておく
+    const r = document.createElement("div");
+    r.className = "reading";
+    r.id = "reading" + i;
+    readings.appendChild(r);
+  });
+}
+
+function flip(i, cardEl) {
+  if (flipped[i]) return;
+  flipped[i] = true;
+
+  const d = draw[i];
+  const pos = POSITIONS[i];
+  const data = d.reversed ? d.card.rev : d.card.up;
+
+  const img = cardEl.querySelector(".card-img");
+  img.src = d.card.img;
+  img.alt = d.card.name + (d.reversed ? "(逆位置)" : "(正位置)");
+  img.classList.toggle("reversed", d.reversed);
+  cardEl.querySelector(".pos-tag").textContent = d.reversed ? "逆位置" : "正位置";
+
+  cardEl.classList.remove("waiting");
+  cardEl.classList.add("flipped");
+
+  // 読み解きを表示
+  const r = document.getElementById("reading" + i);
+  r.innerHTML =
+    '<div class="reading-head">' +
+      '<span class="reading-pos">' + pos.label + "</span>" +
+      '<span class="reading-card">' + d.card.name + "</span>" +
+      '<span class="reading-ori">' + (d.reversed ? "逆位置" : "正位置") + "</span>" +
+    "</div>" +
+    '<div class="reading-kw">' + data.kw + "</div>" +
+    '<div class="reading-text">' + data[pos.key] + "</div>";
+  r.classList.add("show");
+
+  const remaining = flipped.filter(function (f) { return !f; }).length;
+  if (remaining > 0) {
+    guide.textContent = "残り" + remaining + "枚。続けてめくってください";
+  } else {
+    const q = document.getElementById("question").value.trim();
+    if (q) {
+      questionEcho.textContent = "Q. " + q;
+      questionEcho.classList.add("show");
+    }
+    const upCount = draw.filter(function (x) { return !x.reversed; }).length;
+    document.getElementById("summaryText").textContent = pick(SUMMARIES[upCount]);
+    summary.classList.add("show");
+    retryBtn.classList.add("show");
+    guide.textContent = "3枚が示す流れ";
+  }
+}
+
+retryBtn.addEventListener("click", function () {
+  setup();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+setup();
+</script>
+</body>
+</html>

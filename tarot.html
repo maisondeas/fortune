@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YES / NO タロット占い</title>
+<meta name="description" content="タロットカード1枚で、あなたの質問にYesかNoかを占います。">
+<style>
+  :root {
+    --night1: #171233;
+    --night2: #2a1f57;
+    --gold: #d9b96a;
+    --gold-soft: #b89a55;
+    --cream: #f7f0df;
+    --ink: #3a3050;
+    --yes: #e8c877;
+    --no: #8fa3d9;
+    --maybe: #c9a3d9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: linear-gradient(180deg, var(--night1) 0%, var(--night2) 100%);
+    color: var(--cream);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+  /* 星空 */
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .star {
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+    opacity: 0.7;
+    animation: twinkle 3s ease-in-out infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 0.9; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .star { animation: none; }
+    .card-inner { transition: none !important; }
+    .result-area { animation: none !important; }
+  }
+  main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    padding: 32px 20px 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    color: rgba(247, 240, 223, 0.65);
+    margin-top: 8px;
+    text-align: center;
+  }
+  .divider {
+    width: 120px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+    margin: 20px auto;
+  }
+  .question-block {
+    width: 100%;
+    margin-bottom: 28px;
+  }
+  .question-block label {
+    display: block;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+    color: rgba(247, 240, 223, 0.8);
+  }
+  #question {
+    width: 100%;
+    font-size: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(217, 185, 106, 0.4);
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--cream);
+    outline: none;
+  }
+  #question::placeholder { color: rgba(247, 240, 223, 0.4); }
+  #question:focus { border-color: var(--gold); }
+  .guide {
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    color: rgba(247, 240, 223, 0.8);
+    margin-bottom: 18px;
+    text-align: center;
+  }
+  /* カード */
+  .card-stage {
+    perspective: 1200px;
+    margin-bottom: 24px;
+  }
+  .card {
+    width: 200px;
+    height: 358px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.9s cubic-bezier(0.4, 0.1, 0.2, 1);
+    transform-style: preserve-3d;
+  }
+  .card.flipped .card-inner { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .card-back {
+    background:
+      radial-gradient(circle at 50% 40%, rgba(217, 185, 106, 0.18), transparent 60%),
+      linear-gradient(160deg, #241b4d, #171233);
+    border: 2px solid var(--gold-soft);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  }
+  .card-back::before {
+    content: "";
+    position: absolute;
+    inset: 10px;
+    border: 1px solid rgba(217, 185, 106, 0.5);
+    border-radius: 9px;
+  }
+  .card-back .moon {
+    font-size: 46px;
+    filter: drop-shadow(0 0 12px rgba(217, 185, 106, 0.6));
+  }
+  .card-back .back-text {
+    margin-top: 14px;
+    font-size: 12px;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+  }
+  .card-front {
+    background: linear-gradient(170deg, #fbf5e6, #efe4c8);
+    border: 2px solid var(--gold-soft);
+    color: var(--ink);
+    transform: rotateY(180deg);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+    padding: 16px;
+    overflow: hidden;
+  }
+  .card-front::before {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border: 1px solid rgba(122, 100, 50, 0.35);
+    border-radius: 9px;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .card-number {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    color: #7a6432;
+  }
+  .card-symbol {
+    font-size: 60px;
+    margin: 18px 0;
+  }
+  .card.flipped .card-symbol.reversed { transform: rotate(180deg); }
+  .card-name {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-align: center;
+  }
+  .card-position {
+    margin-top: 8px;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    color: #7a6432;
+  }
+  /* カード絵柄(画像あり) */
+  .card-art-wrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.3s;
+  }
+  .card.flipped .card-img.reversed { transform: rotate(180deg); }
+  .position-badge {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    z-index: 3;
+    background: rgba(23, 18, 51, 0.82);
+    color: var(--gold);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    padding: 4px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(217, 185, 106, 0.6);
+    white-space: nowrap;
+  }
+  /* 結果 */
+  .result-area {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeUp 0.8s ease 0.5s both;
+  }
+  .result-area.show { display: flex; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .answer {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    margin-bottom: 4px;
+  }
+  .answer.yes { color: var(--yes); text-shadow: 0 0 24px rgba(232, 200, 119, 0.5); }
+  .answer.no { color: var(--no); text-shadow: 0 0 24px rgba(143, 163, 217, 0.5); }
+  .answer.maybe { color: var(--maybe); text-shadow: 0 0 24px rgba(201, 163, 217, 0.5); }
+  .answer-sub {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: rgba(247, 240, 223, 0.7);
+    margin-bottom: 16px;
+  }
+  .message {
+    font-size: 15px;
+    line-height: 1.9;
+    letter-spacing: 0.04em;
+    text-align: center;
+    color: rgba(247, 240, 223, 0.92);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(217, 185, 106, 0.3);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 24px;
+  }
+  .question-echo {
+    font-size: 13px;
+    color: rgba(247, 240, 223, 0.6);
+    margin-bottom: 10px;
+    text-align: center;
+    word-break: break-word;
+  }
+  button.retry {
+    font-size: 16px;
+    font-family: inherit;
+    letter-spacing: 0.1em;
+    padding: 13px 36px;
+    border-radius: 999px;
+    border: 1px solid var(--gold-soft);
+    background: transparent;
+    color: var(--gold);
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  button.retry:active { background: rgba(217, 185, 106, 0.15); }
+  footer {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    color: rgba(247, 240, 223, 0.4);
+    padding-bottom: 24px;
+    text-align: center;
+    line-height: 1.8;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  @media (min-width: 600px) {
+    .card { width: 230px; height: 412px; }
+    .card-symbol { font-size: 72px; }
+    h1 { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<main>
+  <h1>YES / NO タロット</h1>
+  <p class="subtitle">カード1枚が、あなたの問いに答えます</p>
+  <div class="divider"></div>
+
+  <div class="question-block">
+    <label for="question">占いたいこと(入力は任意です)</label>
+    <input type="text" id="question" placeholder="例:今週、新しい作品づくりを始めるべき?" maxlength="60">
+  </div>
+
+  <p class="guide" id="guide">心の中で質問を思い浮かべて、カードをタップしてください</p>
+
+  <div class="card-stage">
+    <div class="card" id="card" role="button" aria-label="カードをめくる" tabindex="0">
+      <div class="card-inner">
+        <div class="card-face card-back">
+          <div class="moon">🌙</div>
+          <div class="back-text">TAROT</div>
+        </div>
+        <div class="card-face card-front">
+          <div class="card-number" id="cardNumber"></div>
+          <div class="card-symbol" id="cardSymbol"></div>
+          <div class="card-name" id="cardName"></div>
+          <div class="card-position" id="cardPosition"></div>
+          <div class="card-art-wrap" id="cardArtWrap" style="display:none;">
+            <img class="card-img" id="cardImg" alt="">
+            <div class="position-badge" id="positionBadge"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-area" id="resultArea">
+    <p class="question-echo" id="questionEcho"></p>
+    <div class="answer" id="answer"></div>
+    <p class="answer-sub" id="answerSub"></p>
+    <p class="message" id="message"></p>
+    <button class="retry" id="retryBtn">もう一度占う</button>
+  </div>
+</main>
+<footer>
+  ※占い結果は娯楽としてお楽しみください。<br>
+  大切な決断は、ご自身の気持ちを一番に。
+</footer>
+
+<script>
+// ---- 星空の生成 ----
+(function () {
+  const stars = document.getElementById("stars");
+  const count = 60;
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement("div");
+    s.className = "star";
+    const size = Math.random() * 2 + 1;
+    s.style.width = size + "px";
+    s.style.height = size + "px";
+    s.style.left = Math.random() * 100 + "%";
+    s.style.top = Math.random() * 100 + "%";
+    s.style.animationDelay = Math.random() * 3 + "s";
+    s.style.animationDuration = 2 + Math.random() * 3 + "s";
+    stars.appendChild(s);
+  }
+})();
+
+// ---- カードデータ(大アルカナ22枚) ----
+// answer: yes / no / maybe
+const CARDS = [
+  { num: "0", name: "愚者", symbol: "🃏", img: "00.jpg",
+    up: { answer: "yes", msg: "新しい一歩を踏み出すには最高のタイミング。深く考えすぎず、心の軽やかさを信じて進みましょう。" },
+    rev: { answer: "no", msg: "今は勢いだけで動くと足元をすくわれそう。少し立ち止まって、準備を整えてからでも遅くありません。" } },
+  { num: "I", name: "魔術師", symbol: "✨", img: "01.jpg",
+    up: { answer: "yes", msg: "必要な力も道具も、すでにあなたの手の中にあります。自信を持って行動に移して大丈夫です。" },
+    rev: { answer: "no", msg: "まだ材料が揃っていないようです。焦って形にするより、足りないものを見極める時間にしましょう。" } },
+  { num: "II", name: "女教皇", symbol: "📖", img: "02.jpg",
+    up: { answer: "maybe", msg: "答えはあなたの直感の中にあります。静かな時間を作って、心の声に耳を澄ませてみてください。" },
+    rev: { answer: "no", msg: "感情や思い込みで判断が曇りがちなとき。今すぐ結論を出すのは避けたほうが良さそうです。" } },
+  { num: "III", name: "女帝", symbol: "🌹", img: "03.jpg",
+    up: { answer: "yes", msg: "豊かな実りが期待できる流れです。愛情を注いだ分だけ、ちゃんと返ってくるでしょう。" },
+    rev: { answer: "no", msg: "頑張りすぎて余裕を失っていませんか。まずは自分を満たすことを優先したほうが良い結果につながります。" } },
+  { num: "IV", name: "皇帝", symbol: "👑", img: "04.jpg",
+    up: { answer: "yes", msg: "計画を立てて堂々と進めば、望む結果を手にできます。リーダーシップを発揮するときです。" },
+    rev: { answer: "no", msg: "強引に進めると反発を招きそう。柔軟さを取り戻すまで、大きな決断は控えめに。" } },
+  { num: "V", name: "教皇", symbol: "🕊️", img: "05.jpg",
+    up: { answer: "yes", msg: "正攻法が吉。信頼できる人に相談したり、王道のやり方に沿うことで道が開けます。" },
+    rev: { answer: "no", msg: "常識やルールに縛られて本音を見失っているかも。今は無理に周囲に合わせなくて大丈夫です。" } },
+  { num: "VI", name: "恋人", symbol: "💞", img: "06.jpg",
+    up: { answer: "yes", msg: "心がときめく方を選んで正解です。楽しい気持ちが、良い縁と良い流れを連れてきます。" },
+    rev: { answer: "no", msg: "迷いや誘惑で判断がぶれやすいとき。「なんとなく」で選ぶのは、今回は見送りましょう。" } },
+  { num: "VII", name: "戦車", symbol: "🐎", img: "07.jpg",
+    up: { answer: "yes", msg: "迷わず前進あるのみ。スピード感を持って動けば、勝利はあなたのものです。" },
+    rev: { answer: "no", msg: "空回りやフライングに注意。アクセルを踏む前に、進む方向を確かめ直してください。" } },
+  { num: "VIII", name: "力", symbol: "🦁", img: "08.jpg",
+    up: { answer: "yes", msg: "焦らず粘り強く向き合えば、必ず状況を味方にできます。あなたの穏やかな強さが鍵です。" },
+    rev: { answer: "no", msg: "不安に飲み込まれて本来の力が出せていないよう。自信が戻るまで、無理は禁物です。" } },
+  { num: "IX", name: "隠者", symbol: "🏮", img: "09.jpg",
+    up: { answer: "maybe", msg: "今は答えを外に求めるより、ひとりで考えを深めるとき。時間をかけた分、確かな答えが見つかります。" },
+    rev: { answer: "no", msg: "考えすぎて視野が狭くなっているかもしれません。一度その問いから離れてみるのがおすすめです。" } },
+  { num: "X", name: "運命の輪", symbol: "🎡", img: "10.jpg",
+    up: { answer: "yes", msg: "追い風が吹いています。チャンスの流れに乗るなら今。タイミングを逃さないで。" },
+    rev: { answer: "no", msg: "今は流れが向いていないだけ。焦らず次の好機を待つのが、いちばんの近道です。" } },
+  { num: "XI", name: "正義", symbol: "⚖️", img: "11.jpg",
+    up: { answer: "maybe", msg: "感情ではなく、事実と条件を天秤にかけて。冷静に比べれば、公平で納得のいく答えが出せます。" },
+    rev: { answer: "no", msg: "どこかにアンバランスさが潜んでいます。不公平感が残る選択は、後悔のもとになりそうです。" } },
+  { num: "XII", name: "吊るされた男", symbol: "🙃", img: "12.jpg",
+    up: { answer: "no", msg: "今は動くより待つとき。この停滞は無駄ではなく、視点を変えるための大切な時間です。" },
+    rev: { answer: "maybe", msg: "我慢の限界が近いのかもしれません。手放せるものがないか、一度荷物を見直してみましょう。" } },
+  { num: "XIII", name: "死神", symbol: "🌑", img: "13.jpg",
+    up: { answer: "no", msg: "この件は一度きちんと区切りをつけるサイン。終わりは、次の始まりへの入り口です。" },
+    rev: { answer: "maybe", msg: "過去に引きずられて前へ進めていないよう。少しずつでも手放せば、状況は再生に向かいます。" } },
+  { num: "XIV", name: "節制", symbol: "🫖", img: "14.jpg",
+    up: { answer: "yes", msg: "無理のないペースで続ければうまくいきます。バランス感覚を大切に、穏やかに進みましょう。" },
+    rev: { answer: "no", msg: "どこかで無理やムラが出ています。生活や気持ちのリズムを整えてから判断しても遅くありません。" } },
+  { num: "XV", name: "悪魔", symbol: "😈", img: "15.jpg",
+    up: { answer: "no", msg: "目先の誘惑や楽な道に注意。「わかっているけどやめられない」ものが、答えを曇らせています。" },
+    rev: { answer: "maybe", msg: "しがらみから抜け出す力が芽生えています。断ち切る勇気を持てれば、答えはYesに変わります。" } },
+  { num: "XVI", name: "塔", symbol: "🗼", img: "16.jpg",
+    up: { answer: "no", msg: "今の計画のまま進むのはおすすめできません。土台から見直すことで、本当に必要なものが見えてきます。" },
+    rev: { answer: "no", msg: "薄々気づいている問題から目をそらしていませんか。小さいうちに向き合うほうが、傷は浅くすみます。" } },
+  { num: "XVII", name: "星", symbol: "⭐", img: "17.jpg",
+    up: { answer: "yes", msg: "希望の光が差しています。理想を諦めなければ、願いは少しずつ現実に近づいていきます。" },
+    rev: { answer: "maybe", msg: "理想が高すぎて疲れていませんか。目標を少し手前に置き直せば、また輝きが戻ってきます。" } },
+  { num: "XVIII", name: "月", symbol: "🌕", img: "18.jpg",
+    up: { answer: "no", msg: "まだ見えていない事情がありそうです。不安なまま進むより、霧が晴れるのを待ちましょう。" },
+    rev: { answer: "maybe", msg: "少しずつ真実が明らかになっていく流れです。もうしばらくすれば、安心して判断できるようになります。" } },
+  { num: "XIX", name: "太陽", symbol: "☀️", img: "19.jpg",
+    up: { answer: "yes", msg: "文句なしの大吉カード。素直な気持ちのまま進めば、明るい成功が待っています。" },
+    rev: { answer: "maybe", msg: "本当は前向きなのに、自信のなさが影を落としているだけ。小さな成功を積めば光が戻ります。" } },
+  { num: "XX", name: "審判", symbol: "🎺", img: "20.jpg",
+    up: { answer: "yes", msg: "再挑戦や復活に良いとき。一度諦めたことでも、今なら違う結果を出せるでしょう。" },
+    rev: { answer: "no", msg: "過去と同じやり方の繰り返しでは、同じ結果になりそう。方法を変えてから再挑戦を。" } },
+  { num: "XXI", name: "世界", symbol: "🌍", img: "21.jpg",
+    up: { answer: "yes", msg: "物事がひとつの完成を迎える暗示。努力が実を結び、満足のいく結果にたどり着けます。" },
+    rev: { answer: "maybe", msg: "あと一歩のところで足踏みしている状態。最後のピースを埋めれば、ゴールはすぐそこです。" } }
+];
+
+const ANSWER_LABEL = {
+  yes:   { text: "YES",   sub: "答えは「はい」。前向きに進んで良いようです", cls: "yes" },
+  no:    { text: "NO",    sub: "答えは「いいえ」。今は控えるのが良いようです", cls: "no" },
+  maybe: { text: "MAYBE", sub: "答えは五分五分。もう少し様子を見てみましょう", cls: "maybe" }
+};
+
+const card = document.getElementById("card");
+const resultArea = document.getElementById("resultArea");
+const guide = document.getElementById("guide");
+let flipped = false;
+
+function draw() {
+  if (flipped) return;
+  flipped = true;
+
+  const picked = CARDS[Math.floor(Math.random() * CARDS.length)];
+  const isReversed = Math.random() < 0.5;
+  const data = isReversed ? picked.rev : picked.up;
+  const label = ANSWER_LABEL[data.answer];
+
+  const artWrap = document.getElementById("cardArtWrap");
+  const cardImg = document.getElementById("cardImg");
+  const numberEl = document.getElementById("cardNumber");
+  const symbolEl = document.getElementById("cardSymbol");
+  const nameEl = document.getElementById("cardName");
+  const positionEl = document.getElementById("cardPosition");
+
+  if (picked.img) {
+    // 画像ありのカード:絵柄を全面表示し、テキスト要素は隠す
+    cardImg.onerror = function () {
+      // 画像が読み込めない場合は絵文字表示にフォールバック
+      artWrap.style.display = "none";
+      numberEl.style.display = "";
+      symbolEl.style.display = "";
+      nameEl.style.display = "";
+      positionEl.style.display = "";
+      numberEl.textContent = picked.num;
+      symbolEl.textContent = picked.symbol;
+      symbolEl.classList.toggle("reversed", isReversed);
+      nameEl.textContent = picked.name;
+      positionEl.textContent = isReversed ? "逆位置" : "正位置";
+    };
+    cardImg.src = picked.img;
+    cardImg.alt = picked.name + (isReversed ? "(逆位置)" : "(正位置)");
+    cardImg.classList.toggle("reversed", isReversed);
+    document.getElementById("positionBadge").textContent = isReversed ? "逆位置" : "正位置";
+    artWrap.style.display = "flex";
+    numberEl.style.display = "none";
+    symbolEl.style.display = "none";
+    nameEl.style.display = "none";
+    positionEl.style.display = "none";
+  } else {
+    // 画像なしのカード:従来どおり絵文字とテキストで表示
+    artWrap.style.display = "none";
+    numberEl.style.display = "";
+    symbolEl.style.display = "";
+    nameEl.style.display = "";
+    positionEl.style.display = "";
+    numberEl.textContent = picked.num;
+    symbolEl.textContent = picked.symbol;
+    symbolEl.classList.toggle("reversed", isReversed);
+    nameEl.textContent = picked.name;
+    positionEl.textContent = isReversed ? "逆位置" : "正位置";
+  }
+
+  const q = document.getElementById("question").value.trim();
+  document.getElementById("questionEcho").textContent = q ? "Q. " + q : "";
+
+  const answerEl = document.getElementById("answer");
+  answerEl.textContent = label.text;
+  answerEl.className = "answer " + label.cls;
+  document.getElementById("answerSub").textContent = label.sub;
+  document.getElementById("message").textContent = data.msg;
+
+  card.classList.add("flipped");
+  guide.textContent = "カードからのメッセージ";
+  resultArea.classList.add("show");
+}
+
+card.addEventListener("click", draw);
+card.addEventListener("keydown", function (e) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    draw();
+  }
+});
+
+document.getElementById("retryBtn").addEventListener("click", function () {
+  flipped = false;
+  card.classList.remove("flipped");
+  resultArea.classList.remove("show");
+  guide.textContent = "心の中で質問を思い浮かべて、カードをタップしてください";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+</script>
+</body>
+</html>

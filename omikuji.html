@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>おみくじ</title>
+<meta name="description" content="筒を振って、今日のおみくじを一本引きます。">
+<style>
+  :root {
+    --shu1: #8f1d18;
+    --shu2: #b53a2b;
+    --shu-deep: #6d130f;
+    --pearl: #fdf1e6;
+    --pearl-soft: rgba(253, 241, 230, 0.75);
+    --pearl-faint: rgba(253, 241, 230, 0.45);
+    --strip: #fdf6ef;
+    --strip-edge: #f0e2d4;
+    --sumi: #3a2622;
+    --sumi-soft: #6d564f;
+    --line: rgba(253, 241, 230, 0.3);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: linear-gradient(170deg, var(--shu1) 0%, var(--shu2) 55%, var(--shu-deep) 100%);
+    color: var(--pearl);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+  }
+  /* 背景の光と紗綾形の気配 */
+  .veil {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(253, 241, 230, 0.14), transparent 48%),
+      radial-gradient(circle at 12% 88%, rgba(0, 0, 0, 0.18), transparent 55%);
+  }
+  .mote {
+    position: absolute;
+    background: var(--pearl);
+    border-radius: 50%;
+    opacity: 0.16;
+  }
+  main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 460px;
+    padding: 40px 20px 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--pearl-soft);
+    margin-top: 10px;
+    text-align: center;
+    line-height: 1.7;
+  }
+  .divider {
+    width: 100px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--pearl-faint), transparent);
+    margin: 24px auto 30px;
+  }
+  .guide {
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    color: var(--pearl-soft);
+    margin-bottom: 22px;
+    text-align: center;
+    min-height: 20px;
+  }
+  /* 御籤筒 */
+  .box-stage {
+    height: 210px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 30px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .box-wrap {
+    position: relative;
+    width: 96px;
+    transform-origin: 50% 100%;
+  }
+  .box-wrap.shaking { animation: shake 0.62s ease-in-out 3; }
+  @keyframes shake {
+    0%, 100% { transform: rotate(0deg) translateY(0); }
+    20% { transform: rotate(-13deg) translateY(-8px); }
+    50% { transform: rotate(11deg) translateY(-4px); }
+    75% { transform: rotate(-7deg) translateY(-6px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .box-wrap.shaking { animation: none; }
+    .stick, .strip, .result-area { transition: none !important; animation: none !important; }
+  }
+  /* 出てくる籤 */
+  .stick {
+    position: absolute;
+    left: 50%;
+    bottom: 128px;
+    width: 13px;
+    height: 92px;
+    margin-left: -6.5px;
+    background: linear-gradient(180deg, #e8d5b8 0%, #d8bf9c 100%);
+    border-radius: 3px 3px 1px 1px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transform: translateY(96px);
+    opacity: 0;
+    transition: transform 0.75s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.3s;
+    z-index: 0;
+  }
+  .stick::after {
+    content: "";
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    top: 8px;
+    height: 3px;
+    background: var(--shu-deep);
+    border-radius: 1px;
+  }
+  .stick.out { transform: translateY(0); opacity: 1; }
+  .box-body {
+    position: relative;
+    z-index: 1;
+    height: 132px;
+    border-radius: 7px 7px 5px 5px;
+    background:
+      linear-gradient(90deg,
+        rgba(0, 0, 0, 0.3) 0%,
+        rgba(255, 255, 255, 0.16) 26%,
+        rgba(255, 255, 255, 0.05) 52%,
+        rgba(0, 0, 0, 0.32) 100%),
+      linear-gradient(180deg, #a8281f, #7d1811);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 12px;
+  }
+  .box-lid {
+    position: absolute;
+    z-index: 2;
+    top: -9px;
+    left: -7px;
+    right: -7px;
+    height: 18px;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #2f1a15, #1d0f0c);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+  }
+  .box-hole {
+    position: absolute;
+    z-index: 3;
+    top: -3px;
+    left: 50%;
+    margin-left: -8px;
+    width: 16px;
+    height: 6px;
+    border-radius: 2px;
+    background: #120806;
+  }
+  .box-label {
+    writing-mode: vertical-rl;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 19px;
+    letter-spacing: 0.28em;
+    color: var(--pearl);
+    opacity: 0.9;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+  /* 御神籤(紙) */
+  .result-area {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+  }
+  .result-area.show { display: flex; }
+  .strip {
+    position: relative;
+    width: 100%;
+    background: var(--strip);
+    color: var(--sumi);
+    border: 1px solid var(--strip-edge);
+    border-radius: 3px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+    padding: 26px 22px 24px 44px;
+    transform-origin: top center;
+    animation: unfurl 0.8s cubic-bezier(0.25, 0.9, 0.3, 1) both;
+  }
+  @keyframes unfurl {
+    from { transform: scaleY(0.02); opacity: 0.4; }
+    to { transform: scaleY(1); opacity: 1; }
+  }
+  .strip::before {
+    content: "";
+    position: absolute;
+    left: 22px;
+    top: 14px;
+    bottom: 14px;
+    width: 1px;
+    background: rgba(58, 38, 34, 0.18);
+  }
+  .strip-label {
+    position: absolute;
+    left: 6px;
+    top: 20px;
+    writing-mode: vertical-rl;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 13px;
+    letter-spacing: 0.35em;
+    color: var(--shu2);
+  }
+  .fortune {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 52px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--shu1);
+    text-align: center;
+    line-height: 1.15;
+  }
+  .fortune-rank {
+    font-size: 11.5px;
+    letter-spacing: 0.24em;
+    color: var(--sumi-soft);
+    text-align: center;
+    margin-top: 8px;
+  }
+  .verse {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 15px;
+    line-height: 1.95;
+    letter-spacing: 0.05em;
+    text-align: center;
+    margin: 20px 0 22px;
+    padding: 16px 6px;
+    border-top: 1px solid rgba(58, 38, 34, 0.15);
+    border-bottom: 1px solid rgba(58, 38, 34, 0.15);
+  }
+  .fields { display: flex; flex-direction: column; gap: 13px; }
+  .field { display: flex; gap: 12px; align-items: baseline; }
+  .field-name {
+    flex-shrink: 0;
+    width: 4.6em;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--shu1);
+  }
+  .field-text {
+    flex: 1;
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--sumi);
+  }
+  .lucky {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(58, 38, 34, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+  .lucky-row { display: flex; gap: 12px; align-items: center; }
+  .lucky-name {
+    flex-shrink: 0;
+    width: 4.6em;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--shu1);
+  }
+  .lucky-text { font-size: 13.5px; color: var(--sumi); }
+  .swatch {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 1px solid rgba(58, 38, 34, 0.28);
+    margin-right: 8px;
+    vertical-align: -2px;
+  }
+  button.retry {
+    margin-top: 30px;
+    font-size: 16px;
+    font-family: inherit;
+    letter-spacing: 0.12em;
+    padding: 13px 38px;
+    border-radius: 999px;
+    border: 1px solid var(--pearl-faint);
+    background: transparent;
+    color: var(--pearl);
+    cursor: pointer;
+    transition: background 0.3s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.retry:active { background: rgba(253, 241, 230, 0.15); }
+  footer {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    color: var(--pearl-faint);
+    padding: 0 16px 26px;
+    text-align: center;
+    line-height: 1.8;
+  }
+  @media (min-width: 600px) {
+    h1 { font-size: 30px; }
+    .fortune { font-size: 60px; }
+    .box-wrap { width: 108px; }
+  }
+</style>
+</head>
+<body>
+<div class="veil" id="veil"></div>
+<main>
+  <h1>お み く じ</h1>
+  <p class="subtitle">心を静めて、<br>今日の一本を引いてください</p>
+  <div class="divider"></div>
+
+  <p class="guide" id="guide">筒をタップすると振れます</p>
+
+  <div class="box-stage" id="boxStage" role="button" aria-label="おみくじを引く" tabindex="0">
+    <div class="box-wrap" id="boxWrap">
+      <div class="stick" id="stick"></div>
+      <div class="box-body">
+        <div class="box-lid"></div>
+        <div class="box-hole"></div>
+        <div class="box-label">御籤</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-area" id="resultArea">
+    <div class="strip">
+      <div class="strip-label">御神籤</div>
+      <div class="fortune" id="fortune"></div>
+      <div class="fortune-rank" id="fortuneRank"></div>
+      <p class="verse" id="verse"></p>
+      <div class="fields" id="fields"></div>
+      <div class="lucky">
+        <div class="lucky-row">
+          <div class="lucky-name">幸運の色</div>
+          <div class="lucky-text" id="luckyColor"></div>
+        </div>
+        <div class="lucky-row">
+          <div class="lucky-name">幸運の品</div>
+          <div class="lucky-text" id="luckyItem"></div>
+        </div>
+      </div>
+    </div>
+    <button class="retry" id="retryBtn">もう一度引く</button>
+  </div>
+</main>
+<footer>
+  ※占い結果は娯楽としてお楽しみください。<br>
+  大切な決断は、ご自身の気持ちを一番に。
+</footer>
+
+<script>
+// ---- 背景の光の粒 ----
+(function () {
+  const wrap = document.getElementById("veil");
+  for (let i = 0; i < 34; i++) {
+    const m = document.createElement("div");
+    m.className = "mote";
+    const size = Math.random() * 2.4 + 1;
+    m.style.width = size + "px";
+    m.style.height = size + "px";
+    m.style.left = Math.random() * 100 + "%";
+    m.style.top = Math.random() * 100 + "%";
+    wrap.appendChild(m);
+  }
+})();
+
+// ---- 運勢(tier: 0=最良 1=良 2=普通 3=心得) ----
+const FORTUNES = [
+  { name: "大吉", rank: "だいきち", tier: 0, weight: 12, verses: [
+      "そのまま行きなさい。あなたの選んだ道は、\nきちんと光のほうへ続いています。",
+      "実りのとき。まいた種が、\n思いがけない形で返ってきます。",
+      "迷いが晴れる日。心のままに進んで、\n何ひとつ差し支えありません。" ] },
+  { name: "中吉", rank: "ちゅうきち", tier: 1, weight: 18, verses: [
+      "流れは順風。急がず、しかし止まらず、\n自分の歩幅で進みなさい。",
+      "少しずつ整っていくとき。\n焦らなければ、望みは形になります。",
+      "追い風あり。ただし舵は、\nあなた自身が握っていること。" ] },
+  { name: "小吉", rank: "しょうきち", tier: 1, weight: 18, verses: [
+      "小さな幸いが重なる日。\n見落とさないよう、丁寧に過ごしなさい。",
+      "大きな動きはなくとも、\n着実にひとつ前へ進んでいます。",
+      "控えめな喜びのとき。\n分かち合えば、その倍になります。" ] },
+  { name: "吉", rank: "きち", tier: 1, weight: 20, verses: [
+      "穏やかに整うとき。\n当たり前の日々に、幸いは宿ります。",
+      "急がば回れ。手間を惜しまぬほど、\n結び目はほどけていきます。",
+      "静かに良い日。誰かの言葉に、\nひとつ助けられることがあるでしょう。" ] },
+  { name: "末吉", rank: "すえきち", tier: 2, weight: 20, verses: [
+      "今はまだ途中。もう少し先で、\nようやく形が見えてきます。",
+      "実りは後にあり。今日の地道さが、\nそのまま後日の支えになります。",
+      "待つことも進むこと。\n急いた分だけ、遠回りになりましょう。" ] },
+  { name: "凶", rank: "きょう", tier: 3, weight: 12, verses: [
+      "退くが吉。ここで無理をしないことが、\nいちばん確かな前進になります。",
+      "つまずきは、道を選び直す合図。\n休んでから、また歩き出しなさい。",
+      "今日は控えめに。守りに徹すれば、\n失うものは何もありません。" ] }
+];
+
+// ---- 項目ごとの文言(tierで出し分け) ----
+const FIELDS = [
+  { label: "願 望", lines: [
+    ["思いのほか早く叶います。信じて動きなさい",
+     "望みは通ります。口に出すと、なお近づきます",
+     "叶うでしょう。焦らずとも道は開けています"],
+    ["時をかければ叶います。諦めぬことです",
+     "半ばまで来ています。もうひと押しを",
+     "人の力を借りれば、ととのっていきます"],
+    ["すぐには難しくとも、いずれ形になります",
+     "急がぬこと。時期を待てば叶いましょう",
+     "今は種まきのとき。実りは後にあります"],
+    ["今は控えめに。望みを絞れば道は残ります",
+     "高望みは避けなさい。足元の一つを大切に",
+     "叶いにくいとき。願いを温めておきなさい"] ] },
+  { label: "恋 愛", lines: [
+    ["良き縁あり。素直な気持ちがそのまま通じます",
+     "心が通うとき。飾らぬ姿がいちばん美しい",
+     "近づきます。あなたから声をかけてよい日"],
+    ["ゆっくり深まります。急かさぬことです",
+     "小さな行き違いあれど、話せば解けます",
+     "穏やかに進みます。相手の歩幅に合わせて"],
+    ["まだこれから。今は自分を整えるときです",
+     "すれ違いやすい時期。言葉を惜しまぬこと",
+     "縁は少し先にあり。焦らずお待ちなさい"],
+    ["今は距離を保つが吉。深追いは禁物です",
+     "言葉のとげに注意。一呼吸おいてから",
+     "無理に近づかぬこと。時が整えてくれます"] ] },
+  { label: "仕 事", lines: [
+    ["勢いあり。思い切って進めてよいでしょう",
+     "認められるとき。堂々と手を挙げなさい",
+     "成果が形になります。丁寧さを忘れずに"],
+    ["着実に進みます。手順を守ることです",
+     "人に恵まれます。ひとりで抱えぬように",
+     "少しずつ前へ。積み重ねが効いてきます"],
+    ["停滞ぎみ。今は準備と学びに充てなさい",
+     "急がぬこと。土台を固める時期です",
+     "変化は後に。今は目の前をきちんと"],
+    ["新しい話は見送りが吉。守りを固めなさい",
+     "確認を怠らぬこと。小さな綻びに注意",
+     "無理を重ねぬように。手を広げすぎぬこと"] ] },
+  { label: "健 康", lines: [
+    ["すこやか。よく食べ、よく眠れる日です",
+     "心身ともに軽やか。体を動かすと吉",
+     "元気に恵まれます。この調子を保ちなさい"],
+    ["おおむね良好。休息を挟めば申し分なし",
+     "疲れは残らぬうち。早めに横になること",
+     "整っています。無理さえしなければ安泰"],
+    ["やや疲れ気味。温かいもので体を労わって",
+     "睡眠を大切に。夜更かしは避けなさい",
+     "小さな不調のうちに手を打つことです"],
+    ["無理は禁物。今日はゆっくり休みなさい",
+     "冷えに注意。体を温めることを第一に",
+     "気疲れしやすい日。人と離れる時間も必要"] ] },
+  { label: "金 運", lines: [
+    ["巡りよし。使うほど、また返ってきます",
+     "思わぬ実入りあり。感謝を忘れずに",
+     "豊かなとき。人のために使うとなお良し"],
+    ["安定しています。無駄をひとつ削れば十分",
+     "静かに増えるとき。堅実な選択が吉",
+     "困りません。備えを少し厚くしておくこと"],
+    ["現状維持。大きな買い物は先送りが無難",
+     "出入り相半ば。帳尻は後で合ってきます",
+     "今は貯めどき。派手な支出は控えなさい"],
+    ["出費に注意。財布の紐を締めておくこと",
+     "うまい話には乗らぬこと。慎重に",
+     "貸し借りは避けなさい。守りが第一です"] ] },
+  { label: "待 人", lines: [
+    ["来ます。思いのほか早く便りがあります",
+     "来ます。こちらから動けば、なお早く",
+     "現れます。良き知らせを携えて"],
+    ["遅れて来ます。待つ甲斐はあります",
+     "来ます。急かさずお待ちなさい",
+     "便りあり。少し時間がかかりましょう"],
+    ["音沙汰はもう少し先。心配は要りません",
+     "来るには来ますが、日を改めてから",
+     "今日は静か。明日以降に期待なさい"],
+    ["今は来ません。こちらから求めぬこと",
+     "行き違いやすい日。無理に探さぬように",
+     "待たずにおきなさい。時期が違うだけです"] ] }
+];
+
+// ---- ラッキーカラー(和色) ----
+const COLORS = [
+  { name: "桜色", hex: "#fef4f4" }, { name: "若草色", hex: "#c3d825" },
+  { name: "藍色", hex: "#165e83" }, { name: "山吹色", hex: "#f8b500" },
+  { name: "珊瑚色", hex: "#f5b1aa" }, { name: "白練", hex: "#f3f3f2" },
+  { name: "藤色", hex: "#bbbcde" }, { name: "柿色", hex: "#ed6d3d" },
+  { name: "浅葱色", hex: "#00a3af" }, { name: "紅梅色", hex: "#f2a0a1" },
+  { name: "萌黄", hex: "#aacf53" }, { name: "墨色", hex: "#595857" },
+  { name: "菫色", hex: "#7058a3" }, { name: "生成り色", hex: "#fbfaf5" },
+  { name: "黄金色", hex: "#e6b422" }
+];
+
+// ---- ラッキーアイテム ----
+const ITEMS = [
+  "針と糸", "白いハンカチ", "木のボタン", "温かい飲み物", "小さな花",
+  "使い込んだ手帳", "リボン", "手鏡", "石けんの香り", "陶器のカップ",
+  "読みかけの本", "灯りのともるもの", "刺繍の入った小物", "布のしおり",
+  "早朝の光", "小さな鈴", "麻のふきん", "季節の果物"
+];
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ---- 重み付き抽選 ----
+function drawFortune() {
+  const total = FORTUNES.reduce(function (a, f) { return a + f.weight; }, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < FORTUNES.length; i++) {
+    r -= FORTUNES[i].weight;
+    if (r < 0) return FORTUNES[i];
+  }
+  return FORTUNES[FORTUNES.length - 1];
+}
+
+const stage = document.getElementById("boxStage");
+const boxWrap = document.getElementById("boxWrap");
+const stick = document.getElementById("stick");
+const resultArea = document.getElementById("resultArea");
+const guide = document.getElementById("guide");
+let busy = false;
+let done = false;
+
+function draw() {
+  if (busy || done) return;
+  busy = true;
+  guide.textContent = "筒を振っています…";
+
+  boxWrap.classList.add("shaking");
+
+  setTimeout(function () {
+    boxWrap.classList.remove("shaking");
+    stick.classList.add("out");
+    guide.textContent = "一本、出ました";
+  }, 1900);
+
+  setTimeout(function () {
+    const f = drawFortune();
+
+    document.getElementById("fortune").textContent = f.name;
+    document.getElementById("fortuneRank").textContent = f.rank;
+    document.getElementById("verse").textContent = pick(f.verses);
+
+    const fieldsWrap = document.getElementById("fields");
+    fieldsWrap.innerHTML = "";
+    FIELDS.forEach(function (fd) {
+      const row = document.createElement("div");
+      row.className = "field";
+      const nm = document.createElement("div");
+      nm.className = "field-name";
+      nm.textContent = fd.label;
+      const tx = document.createElement("div");
+      tx.className = "field-text";
+      tx.textContent = pick(fd.lines[f.tier]);
+      row.appendChild(nm);
+      row.appendChild(tx);
+      fieldsWrap.appendChild(row);
+    });
+
+    const c = pick(COLORS);
+    document.getElementById("luckyColor").innerHTML =
+      '<span class="swatch" style="background:' + c.hex + '"></span>' + c.name;
+    document.getElementById("luckyItem").textContent = pick(ITEMS);
+
+    guide.textContent = "今日のおみくじ";
+    resultArea.classList.add("show");
+    done = true;
+    busy = false;
+  }, 2750);
+}
+
+stage.addEventListener("click", draw);
+stage.addEventListener("keydown", function (e) {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); draw(); }
+});
+
+document.getElementById("retryBtn").addEventListener("click", function () {
+  done = false;
+  busy = false;
+  resultArea.classList.remove("show");
+  stick.classList.remove("out");
+  guide.textContent = "筒をタップすると振れます";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+</script>
+</body>
+</html>

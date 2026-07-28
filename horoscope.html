@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星座占い ― 今日の12星座</title>
+<meta name="description" content="12星座それぞれの、今日の運勢とランキングを占います。">
+<style>
+  :root {
+    --sky1: #eeeaf7;
+    --sky2: #ded8ee;
+    --sky3: #cfc9e4;
+    --plum: #3f3558;
+    --plum-soft: #665c82;
+    --plum-faint: #928aa8;
+    --silver: #8d93ad;
+    --silver-light: #b6bbcd;
+    --white: #fcfbff;
+    --line: rgba(141, 147, 173, 0.32);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 55%, var(--sky3) 100%);
+    color: var(--plum);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+  }
+  /* 明け方に残る星 */
+  .dawn {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 90% 40% at 50% 0%, rgba(252, 251, 255, 0.85), transparent 62%),
+      radial-gradient(circle at 88% 12%, rgba(141, 147, 173, 0.14), transparent 46%);
+  }
+  .star {
+    position: absolute;
+    background: var(--silver);
+    border-radius: 50%;
+  }
+  main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 470px;
+    padding: 40px 20px 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--plum-soft);
+    margin-top: 10px;
+    text-align: center;
+    line-height: 1.7;
+  }
+  .today {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--plum-faint);
+    margin-top: 12px;
+  }
+  .divider {
+    width: 100px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--silver), transparent);
+    margin: 22px auto 26px;
+  }
+  .guide {
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    color: var(--plum-soft);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  /* 星座の一覧 */
+  .sign-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .sign-grid.hidden { display: none; }
+  .sign-card {
+    background: rgba(252, 251, 255, 0.62);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 14px 6px 12px;
+    text-align: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.25s, transform 0.2s;
+  }
+  .sign-card:active { transform: scale(0.95); background: rgba(252, 251, 255, 0.95); }
+  .sign-glyph {
+    font-size: 22px;
+    color: var(--silver);
+    line-height: 1;
+  }
+  .sign-name {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin-top: 7px;
+  }
+  .sign-date {
+    font-size: 10.5px;
+    color: var(--plum-faint);
+    margin-top: 4px;
+    letter-spacing: 0.02em;
+  }
+  /* 結果 */
+  .result-area {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeUp 0.65s ease both;
+  }
+  .result-area.show { display: flex; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .result-area, .rank-area { animation: none !important; }
+  }
+  .result-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 6px;
+  }
+  .result-glyph {
+    font-size: 40px;
+    color: var(--silver);
+    line-height: 1;
+  }
+  .result-name-block { text-align: left; }
+  .result-name {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 25px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+  .result-date {
+    font-size: 11.5px;
+    color: var(--plum-faint);
+    margin-top: 3px;
+    letter-spacing: 0.04em;
+  }
+  .rank-badge {
+    margin: 16px 0 4px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    background: var(--plum);
+    color: var(--white);
+    padding: 7px 20px;
+    border-radius: 999px;
+    box-shadow: 0 5px 16px rgba(63, 53, 88, 0.28);
+  }
+  .rank-badge .lead { font-size: 11px; letter-spacing: 0.2em; }
+  .rank-badge .num {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .rank-badge .suffix { font-size: 12px; letter-spacing: 0.1em; }
+  .card {
+    width: 100%;
+    background: rgba(252, 251, 255, 0.72);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 20px 22px;
+    margin-top: 18px;
+  }
+  .scores { display: flex; flex-direction: column; gap: 12px; }
+  .score-row { display: flex; align-items: center; gap: 12px; }
+  .score-name {
+    flex-shrink: 0;
+    width: 4.2em;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+  }
+  .score-stars {
+    font-size: 15px;
+    letter-spacing: 0.12em;
+    color: var(--silver);
+  }
+  .score-stars .on { color: #c9a227; }
+  .score-line {
+    flex: 1;
+    font-size: 12.5px;
+    color: var(--plum-soft);
+    line-height: 1.6;
+    min-width: 0;
+  }
+  .message {
+    font-size: 15px;
+    line-height: 1.95;
+    letter-spacing: 0.03em;
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+  .lucky {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .lucky-row { display: flex; gap: 12px; align-items: center; }
+  .lucky-name {
+    flex-shrink: 0;
+    width: 4.6em;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--plum-soft);
+  }
+  .lucky-text { font-size: 13.5px; }
+  .swatch {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 1px solid rgba(63, 53, 88, 0.25);
+    margin-right: 8px;
+    vertical-align: -2px;
+  }
+  .advice {
+    margin-top: 18px;
+    padding: 13px 16px;
+    background: rgba(141, 147, 173, 0.12);
+    border-radius: 8px;
+    font-size: 13.5px;
+    line-height: 1.8;
+    color: var(--plum);
+  }
+  .advice span { color: var(--plum-faint); letter-spacing: 0.16em; font-size: 11px; display: block; margin-bottom: 5px; }
+  /* ランキング */
+  .rank-area {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    margin-top: 22px;
+    animation: fadeUp 0.55s ease both;
+  }
+  .rank-area.show { display: flex; }
+  .rank-title {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .rank-list {
+    background: rgba(252, 251, 255, 0.72);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .rank-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    border-bottom: 1px solid rgba(141, 147, 173, 0.16);
+    font-size: 14px;
+  }
+  .rank-item:last-child { border-bottom: none; }
+  .rank-item.me { background: rgba(141, 147, 173, 0.16); font-weight: 600; }
+  .rank-no {
+    flex-shrink: 0;
+    width: 2.4em;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 15px;
+    color: var(--plum-soft);
+  }
+  .rank-item.top .rank-no { color: #c9a227; }
+  .rank-glyph { flex-shrink: 0; color: var(--silver); font-size: 15px; }
+  .buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+    width: 100%;
+    margin-top: 26px;
+  }
+  button.act {
+    font-size: 16px;
+    font-family: inherit;
+    letter-spacing: 0.1em;
+    padding: 13px 20px;
+    border-radius: 999px;
+    border: 1px solid var(--silver);
+    background: transparent;
+    color: var(--plum);
+    cursor: pointer;
+    transition: background 0.3s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.act:active { background: rgba(141, 147, 173, 0.18); }
+  footer {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    color: var(--plum-faint);
+    padding: 0 16px 26px;
+    text-align: center;
+    line-height: 1.8;
+  }
+  @media (min-width: 600px) {
+    h1 { font-size: 30px; }
+    .result-name { font-size: 28px; }
+    .sign-name { font-size: 15.5px; }
+  }
+</style>
+</head>
+<body>
+<div class="dawn" id="dawn"></div>
+<main>
+  <h1>星 座 占 い</h1>
+  <p class="subtitle">明け方の空に残る星が、<br>今日のあなたに告げること</p>
+  <p class="today" id="todayLabel"></p>
+  <div class="divider"></div>
+
+  <p class="guide" id="guide">あなたの星座を選んでください</p>
+
+  <div class="sign-grid" id="signGrid"></div>
+
+  <div class="result-area" id="resultArea">
+    <div class="result-head">
+      <div class="result-glyph" id="resGlyph"></div>
+      <div class="result-name-block">
+        <div class="result-name" id="resName"></div>
+        <div class="result-date" id="resDate"></div>
+      </div>
+    </div>
+    <div class="rank-badge">
+      <span class="lead">総合</span>
+      <span class="num" id="resRank"></span>
+      <span class="suffix">位 / 12星座中</span>
+    </div>
+
+    <div class="card">
+      <div class="scores">
+        <div class="score-row">
+          <div class="score-name">総合運</div>
+          <div class="score-stars" id="starAll"></div>
+        </div>
+        <div class="score-row">
+          <div class="score-name">恋愛運</div>
+          <div class="score-stars" id="starLove"></div>
+        </div>
+        <div class="score-row">
+          <div class="score-name">仕事運</div>
+          <div class="score-stars" id="starWork"></div>
+        </div>
+        <div class="score-row">
+          <div class="score-name">金運</div>
+          <div class="score-stars" id="starMoney"></div>
+        </div>
+      </div>
+
+      <p class="message" id="resMessage"></p>
+
+      <div class="lucky">
+        <div class="lucky-row">
+          <div class="lucky-name">恋愛</div>
+          <div class="lucky-text" id="lineLove"></div>
+        </div>
+        <div class="lucky-row">
+          <div class="lucky-name">仕事</div>
+          <div class="lucky-text" id="lineWork"></div>
+        </div>
+        <div class="lucky-row">
+          <div class="lucky-name">金運</div>
+          <div class="lucky-text" id="lineMoney"></div>
+        </div>
+      </div>
+
+      <div class="lucky">
+        <div class="lucky-row">
+          <div class="lucky-name">幸運の色</div>
+          <div class="lucky-text" id="luckyColor"></div>
+        </div>
+        <div class="lucky-row">
+          <div class="lucky-name">幸運の品</div>
+          <div class="lucky-text" id="luckyItem"></div>
+        </div>
+      </div>
+
+      <div class="advice">
+        <span>今日の心がけ</span>
+        <div id="resAdvice"></div>
+      </div>
+    </div>
+
+    <div class="rank-area" id="rankArea">
+      <div class="rank-title">今日の12星座ランキング</div>
+      <div class="rank-list" id="rankList"></div>
+    </div>
+
+    <div class="buttons">
+      <button class="act" id="rankBtn">12星座ランキングを見る</button>
+      <button class="act" id="backBtn">星座を選び直す</button>
+    </div>
+  </div>
+</main>
+<footer>
+  ※占い結果は娯楽としてお楽しみください。<br>
+  大切な決断は、ご自身の気持ちを一番に。
+</footer>
+
+<script>
+// ---- 明け方に残る星を配置 ----
+(function () {
+  const wrap = document.getElementById("dawn");
+  for (let i = 0; i < 42; i++) {
+    const s = document.createElement("div");
+    s.className = "star";
+    const size = Math.random() * 2.2 + 0.8;
+    s.style.width = size + "px";
+    s.style.height = size + "px";
+    s.style.left = Math.random() * 100 + "%";
+    s.style.top = Math.random() * 100 + "%";
+    // 上ほど白んで見えにくく、下ほど残る
+    s.style.opacity = (0.08 + (Number(s.style.top.replace("%", "")) / 100) * 0.34).toFixed(2);
+    wrap.appendChild(s);
+  }
+})();
+
+// ---- 12星座 ----
+const SIGNS = [
+  { name: "牡羊座", glyph: "♈", span: "3/21 - 4/19" },
+  { name: "牡牛座", glyph: "♉", span: "4/20 - 5/20" },
+  { name: "双子座", glyph: "♊", span: "5/21 - 6/21" },
+  { name: "蟹座",   glyph: "♋", span: "6/22 - 7/22" },
+  { name: "獅子座", glyph: "♌", span: "7/23 - 8/22" },
+  { name: "乙女座", glyph: "♍", span: "8/23 - 9/22" },
+  { name: "天秤座", glyph: "♎", span: "9/23 - 10/23" },
+  { name: "蠍座",   glyph: "♏", span: "10/24 - 11/22" },
+  { name: "射手座", glyph: "♐", span: "11/23 - 12/21" },
+  { name: "山羊座", glyph: "♑", span: "12/22 - 1/19" },
+  { name: "水瓶座", glyph: "♒", span: "1/20 - 2/18" },
+  { name: "魚座",   glyph: "♓", span: "2/19 - 3/20" }
+];
+
+// ---- 総合メッセージ(tier 0=好調 1=普通 2=控えめ) ----
+const MESSAGES = [
+  [ "視界がすっと開けるような一日です。ずっと気にかかっていたことに手をつけるなら今日が好機。あなたの動きに、周りも自然とついてきてくれます。",
+    "うれしい知らせや、思いがけない巡り合わせがありそうです。素直に喜びを表すほど、良い流れがさらに広がっていきます。",
+    "やってきたことが形になって返ってくる日。遠慮せずに、自分の成果を受け取ってください。自信がそのまま追い風になります。",
+    "人との縁に恵まれる一日です。誰かのひと言が、迷っていたことの答えになるかもしれません。会話を大切にしてください。",
+    "心と体の調子がそろう、軽やかな日です。少し背伸びした挑戦も、今日なら不思議とうまく運びます。" ],
+  [ "大きな波はありませんが、静かに整っていく一日です。目の前のことを丁寧にこなすほど、夕方には心地よい手応えが残ります。",
+    "焦らず、いつものペースを守ることが吉。急いで決めようとせず、様子を見る余裕を持てば判断を誤りません。",
+    "小さな良いことが積み重なる日です。見過ごしてしまいそうな場面にこそ、今日の幸運は隠れています。",
+    "人に合わせる場面が多くなりそうですが、それが後々あなたを助けます。柔らかく構えておいてください。",
+    "半歩前進の一日。結果を急がず、続けていることをそのまま続けるのが、いちばん確かな道になります。" ],
+  [ "少し立ち止まるほうが良い日です。無理に進めようとせず、休むことも今日の大切な仕事だと考えてください。",
+    "思い通りに運びにくい場面がありそうです。ここで踏ん張るより、いったん手を引くほうが結果的にうまくいきます。",
+    "気持ちが揺れやすい一日。人の言葉を深く受け取りすぎないよう、自分の時間を意識して確保してください。",
+    "予定が乱れやすいときです。詰め込みすぎず、余白のある一日にしておくと、慌てずに済みます。",
+    "疲れが出やすい日です。今日は守りに徹して、明日のために力を蓄えることを優先してください。" ]
+];
+
+// ---- 項目別の一言 ----
+const LINES = {
+  love: [
+    ["気になる相手との距離が縮まります", "素直な言葉がまっすぐ届く日です",
+     "うれしい連絡が入りそうです", "笑顔がそのまま良い縁を呼びます"],
+    ["穏やかに過ごせます。焦らずに", "相手の話を聞く側にまわると吉",
+     "小さな気遣いが効いてきます", "急がなくて大丈夫。ゆっくりと"],
+    ["言葉選びは慎重に。一呼吸おいて", "今日は距離を保つほうが無難です",
+     "すれ違いやすい日。深追いは禁物", "自分の時間を大切にしてください"] ],
+  work: [
+    ["集中力が高く、はかどります", "評価につながる働きができそうです",
+     "思い切った提案が通りやすい日", "周囲の協力が得られます"],
+    ["手順を守れば滞りなく進みます", "着実に片づけていくのが吉",
+     "確認をひとつ増やすと安心です", "無理のない量に絞りましょう"],
+    ["新しい着手は見送りが無難です", "細かなミスに注意してください",
+     "抱え込まず、人に頼ることです", "今日は整理と準備に充てて"] ],
+  money: [
+    ["巡りがよく、うれしい出費も吉", "思わぬ形で得るものがあります",
+     "自分への投資が実を結びます", "気前よく使っても差し支えなし"],
+    ["おおむね安定しています", "予定内の買い物なら問題ありません",
+     "少し貯めておくと安心です", "無駄をひとつ見直すと吉"],
+    ["衝動買いに注意してください", "財布の紐は締めておくのが無難",
+     "うまい話には乗らないこと", "今日は使わない日と決めて"] ]
+};
+
+// ---- 今日の心がけ ----
+const ADVICES = [
+  "朝いちばんに、窓を開けて空気を入れ替えてみてください。",
+  "誰かに「ありがとう」と伝える機会をひとつ作ってみましょう。",
+  "決めきれないことは、明日の自分に預けてしまって構いません。",
+  "手を動かす時間を少しだけ確保すると、気持ちが整います。",
+  "いつもより丁寧にお茶を淹れてみると、流れが変わります。",
+  "机の上をひとつだけ片づけると、頭の中も軽くなります。",
+  "遠回りの道を選んでみると、小さな発見がありそうです。",
+  "気になっていた連絡を、今日のうちに済ませておきましょう。",
+  "夜は早めに灯りを落として、しっかり休んでください。",
+  "自分を後回しにしていないか、一度立ち止まって確かめて。",
+  "苦手な人とは、今日は距離を置いても構いません。",
+  "小さな買い物でも、心が動いたほうを選んでみてください。",
+  "作りかけのものに、少しだけ手を入れてみましょう。",
+  "深呼吸を三回。それだけで判断が変わることがあります。",
+  "予定を一つ減らして、余白を作っておくと安心です。",
+  "好きな色のものを、身のまわりにひとつ置いてみてください。",
+  "うまくいかないことは、今日は「そういう日」と流して。",
+  "昔の写真や記録を眺めると、進むべき方向が見えてきます。"
+];
+
+// ---- 幸運の色(和色) ----
+const COLORS = [
+  { name: "月白", hex: "#eaf4fc" }, { name: "群青", hex: "#4c6cb3" },
+  { name: "撫子色", hex: "#eebbcb" }, { name: "若竹色", hex: "#68be8d" },
+  { name: "杏色", hex: "#f7b977" }, { name: "鴇色", hex: "#f4b3c2" },
+  { name: "空色", hex: "#a0d8ef" }, { name: "利休鼠", hex: "#888e7e" },
+  { name: "菜の花色", hex: "#ffec47" }, { name: "青磁色", hex: "#7ebeab" },
+  { name: "薄紅", hex: "#e597b2" }, { name: "琥珀色", hex: "#bf783a" },
+  { name: "白藤色", hex: "#dbd0e6" }, { name: "深緋", hex: "#c1272d" },
+  { name: "海松色", hex: "#726d40" }, { name: "真珠色", hex: "#f2f2f0" }
+];
+
+// ---- 幸運の品 ----
+const ITEMS = [
+  "お気に入りのマグカップ", "一輪の花", "香りのよいハンドクリーム", "小さなノート",
+  "柔らかいストール", "白い封筒", "季節の果物", "使い慣れた文房具",
+  "銀色のアクセサリー", "焼きたてのパン", "手紙", "小石のような形のもの",
+  "古い本", "レースのハンカチ", "紅茶", "きれいな石けん",
+  "手仕事の道具", "小さな鏡", "ガラスの器", "羊毛のもの"
+];
+
+// ---- 日付固定の疑似乱数 ----
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// 種を十分に撹拌して、星座ごとの偏りをなくす
+function hashSeed(x) {
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  return (x ^ (x >>> 16)) >>> 0;
+}
+
+// 端末の時計に関わらず、日本時間(UTC+9)の日付を使う
+const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+const TY = jstNow.getUTCFullYear();
+const TM = jstNow.getUTCMonth() + 1;
+const TD = jstNow.getUTCDate();
+const DAY_SEED = TY * 10000 + TM * 100 + TD;
+
+document.getElementById("todayLabel").textContent =
+  TY + "年" + TM + "月" + TD + "日";
+
+// 星座ごとの日替わりデータを生成
+function buildData(index) {
+  const rng = mulberry32(hashSeed(DAY_SEED * 137 + index * 7919));
+  const score = rng();                       // 総合スコア(順位算出用)
+  const starTable = [1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5];
+  return {
+    index: index,
+    score: score,
+    love: starTable[Math.floor(rng() * starTable.length)],
+    work: starTable[Math.floor(rng() * starTable.length)],
+    money: starTable[Math.floor(rng() * starTable.length)],
+    msgPick: rng(),
+    lovePick: rng(),
+    workPick: rng(),
+    moneyPick: rng(),
+    colorPick: rng(),
+    itemPick: rng(),
+    advicePick: rng()
+  };
+}
+
+// 全星座を生成して順位を確定
+const ALL = SIGNS.map(function (s, i) { return buildData(i); });
+const RANKED = ALL.slice().sort(function (a, b) { return b.score - a.score; });
+RANKED.forEach(function (d, i) { d.rank = i + 1; });
+
+// 順位から総合運の星の数を決める
+function rankToStars(rank) {
+  if (rank <= 2) return 5;
+  if (rank <= 5) return 4;
+  if (rank <= 8) return 3;
+  if (rank <= 11) return 2;
+  return 1;
+}
+
+// 星の数からメッセージの階層を決める
+function starsToTier(stars) {
+  if (stars >= 4) return 0;
+  if (stars === 3) return 1;
+  return 2;
+}
+
+function starHTML(n) {
+  let s = "";
+  for (let i = 1; i <= 5; i++) {
+    s += i <= n ? '<span class="on">★</span>' : "☆";
+  }
+  return s;
+}
+
+function pickBy(arr, r) { return arr[Math.floor(r * arr.length)]; }
+
+// ---- 星座一覧を描画 ----
+const grid = document.getElementById("signGrid");
+SIGNS.forEach(function (s, i) {
+  const card = document.createElement("div");
+  card.className = "sign-card";
+  card.setAttribute("role", "button");
+  card.setAttribute("tabindex", "0");
+  card.innerHTML =
+    '<div class="sign-glyph">' + s.glyph + "</div>" +
+    '<div class="sign-name">' + s.name + "</div>" +
+    '<div class="sign-date">' + s.span + "</div>";
+  card.addEventListener("click", function () { show(i); });
+  card.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(i); }
+  });
+  grid.appendChild(card);
+});
+
+const resultArea = document.getElementById("resultArea");
+const rankArea = document.getElementById("rankArea");
+const guide = document.getElementById("guide");
+
+function show(i) {
+  const s = SIGNS[i];
+  const d = ALL[i];
+  const allStars = rankToStars(d.rank);
+  const tier = starsToTier(allStars);
+
+  document.getElementById("resGlyph").textContent = s.glyph;
+  document.getElementById("resName").textContent = s.name;
+  document.getElementById("resDate").textContent = s.span;
+  document.getElementById("resRank").textContent = d.rank;
+
+  document.getElementById("starAll").innerHTML = starHTML(allStars);
+  document.getElementById("starLove").innerHTML = starHTML(d.love);
+  document.getElementById("starWork").innerHTML = starHTML(d.work);
+  document.getElementById("starMoney").innerHTML = starHTML(d.money);
+
+  document.getElementById("resMessage").textContent = pickBy(MESSAGES[tier], d.msgPick);
+  document.getElementById("lineLove").textContent = pickBy(LINES.love[starsToTier(d.love)], d.lovePick);
+  document.getElementById("lineWork").textContent = pickBy(LINES.work[starsToTier(d.work)], d.workPick);
+  document.getElementById("lineMoney").textContent = pickBy(LINES.money[starsToTier(d.money)], d.moneyPick);
+
+  const c = pickBy(COLORS, d.colorPick);
+  document.getElementById("luckyColor").innerHTML =
+    '<span class="swatch" style="background:' + c.hex + '"></span>' + c.name;
+  document.getElementById("luckyItem").textContent = pickBy(ITEMS, d.itemPick);
+  document.getElementById("resAdvice").textContent = pickBy(ADVICES, d.advicePick);
+
+  // ランキングを組み立て
+  const list = document.getElementById("rankList");
+  list.innerHTML = "";
+  RANKED.forEach(function (r) {
+    const item = document.createElement("div");
+    item.className = "rank-item" + (r.index === i ? " me" : "") + (r.rank <= 3 ? " top" : "");
+    item.innerHTML =
+      '<div class="rank-no">' + r.rank + "位</div>" +
+      '<div class="rank-glyph">' + SIGNS[r.index].glyph + "</div>" +
+      "<div>" + SIGNS[r.index].name + "</div>";
+    list.appendChild(item);
+  });
+
+  try { localStorage.setItem("horoscope_sign", String(i)); } catch (e) {}
+
+  grid.classList.add("hidden");
+  rankArea.classList.remove("show");
+  document.getElementById("rankBtn").textContent = "12星座ランキングを見る";
+  guide.textContent = "今日のあなたの運勢";
+  resultArea.classList.add("show");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.getElementById("rankBtn").addEventListener("click", function () {
+  const open = rankArea.classList.toggle("show");
+  this.textContent = open ? "ランキングを閉じる" : "12星座ランキングを見る";
+});
+
+document.getElementById("backBtn").addEventListener("click", function () {
+  resultArea.classList.remove("show");
+  rankArea.classList.remove("show");
+  grid.classList.remove("hidden");
+  guide.textContent = "あなたの星座を選んでください";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+// 前回選んだ星座があれば、そのまま今日の結果を表示
+try {
+  const saved = localStorage.getItem("horoscope_sign");
+  if (saved !== null) {
+    const idx = Number(saved);
+    if (idx >= 0 && idx < 12) show(idx);
+  }
+} catch (e) {}
+</script>
+</body>
+</html>

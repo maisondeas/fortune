@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>易占い ― この先どうなる占い</title>
+<meta name="description" content="六本の爻を立て、この先の流れを易占いで占います。">
+<style>
+  :root {
+    --paper: #f2ead8;
+    --paper-deep: #e8dcc0;
+    --ink: #23201b;
+    --ink-soft: #57503f;
+    --ink-faint: #8a7f68;
+    --red: #a23b2e;
+    --red-deep: #7f2e23;
+    --gold: #9c7c46;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+  }
+  /* 紙の質感(斑点と淡い滲み) */
+  .paper-texture {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 85% 8%, rgba(162, 59, 46, 0.05), transparent 70%),
+      radial-gradient(ellipse 50% 35% at 10% 95%, rgba(35, 32, 27, 0.05), transparent 70%);
+  }
+  .fleck {
+    position: absolute;
+    background: var(--ink-faint);
+    border-radius: 50%;
+    opacity: 0.12;
+  }
+  main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    padding: 36px 20px 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--ink);
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    margin-top: 10px;
+    text-align: center;
+    line-height: 1.7;
+  }
+  .divider {
+    width: 100px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 22px auto;
+  }
+  .question-block {
+    width: 100%;
+    max-width: 280px;
+    margin-bottom: 26px;
+  }
+  .question-block label {
+    display: block;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    color: var(--ink-soft);
+    text-align: center;
+  }
+  #question {
+    width: 100%;
+    font-size: 16px;
+    padding: 11px 14px;
+    border-radius: 4px;
+    border: 1px solid rgba(35, 32, 27, 0.25);
+    background: rgba(255, 255, 255, 0.35);
+    color: var(--ink);
+    outline: none;
+    text-align: center;
+    font-family: inherit;
+  }
+  #question::placeholder { color: rgba(87, 80, 63, 0.5); }
+  #question:focus { border-color: var(--red); }
+  .guide {
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    margin-bottom: 22px;
+    text-align: center;
+  }
+  /* 卦(六本の爻) */
+  .hexagram-stage {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 13px;
+    width: 220px;
+    margin-bottom: 28px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    padding: 20px 0;
+  }
+  .yao {
+    height: 15px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+  }
+  .yao-bar {
+    height: 100%;
+    background: var(--ink);
+    border-radius: 1px;
+    transform: scaleX(0);
+    transition: transform 0.5s cubic-bezier(0.3, 0.1, 0.2, 1);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+  }
+  .yao.solid .yao-bar { width: 100%; transform-origin: center; }
+  .yao.solid.revealed .yao-bar { transform: scaleX(1); }
+  .yao.broken .yao-bar { width: 43%; transform-origin: center; }
+  .yao.broken.revealed .yao-bar { transform: scaleX(1); }
+  .yao.placeholder .yao-bar {
+    background: transparent;
+    border: 1.5px dashed rgba(87, 80, 63, 0.3);
+    transform: scaleX(1);
+  }
+  .yao.placeholder.solid .yao-bar { width: 100%; }
+  .yao.placeholder.broken .yao-bar { width: 43%; }
+  /* 結果 */
+  .result-area {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: fadeUp 0.7s ease 0.2s both;
+  }
+  .result-area.show { display: flex; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .question-echo {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+    word-break: break-word;
+  }
+  .hexagram-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 6px;
+  }
+  .seal {
+    flex-shrink: 0;
+    width: 46px;
+    height: 46px;
+    background: var(--red);
+    color: #f6ead5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 2px solid var(--red-deep);
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.25);
+    transform: rotate(-6deg);
+  }
+  .hex-name-block { text-align: left; }
+  .hex-name {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+  }
+  .hex-reading {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    margin-top: 2px;
+  }
+  .keyword {
+    display: inline-block;
+    margin: 14px 0 16px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    border-top: 1px solid rgba(162, 59, 46, 0.35);
+    border-bottom: 1px solid rgba(162, 59, 46, 0.35);
+    padding: 5px 18px;
+  }
+  .message {
+    font-size: 15px;
+    line-height: 1.9;
+    letter-spacing: 0.03em;
+    color: var(--ink);
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(35, 32, 27, 0.15);
+    border-radius: 4px;
+    padding: 18px 20px;
+    margin-bottom: 26px;
+  }
+  button.retry {
+    font-size: 16px;
+    font-family: inherit;
+    letter-spacing: 0.1em;
+    padding: 12px 34px;
+    border-radius: 2px;
+    border: 1px solid var(--ink);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s;
+  }
+  button.retry:active { background: var(--ink); color: var(--paper); }
+  footer {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    color: var(--ink-faint);
+    padding-bottom: 24px;
+    text-align: center;
+    line-height: 1.8;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  @media (min-width: 600px) {
+    h1 { font-size: 30px; }
+    .hexagram-stage { width: 250px; }
+    .hex-name { font-size: 27px; }
+  }
+</style>
+</head>
+<body>
+<div class="paper-texture" id="paperTexture"></div>
+<main>
+  <h1>易 占 い</h1>
+  <p class="subtitle">六本の爻(こう)を立て、<br>この先の流れを映し出します</p>
+  <div class="divider"></div>
+
+  <div class="question-block">
+    <label for="question">占いたいこと(入力は任意です)</label>
+    <input type="text" id="question" placeholder="例:このまま進めてよいか" maxlength="60">
+  </div>
+
+  <p class="guide" id="guide">心の中で問いを思い浮かべて、下の卦をタップしてください</p>
+
+  <div class="hexagram-stage" id="hexStage" role="button" aria-label="卦を立てる" tabindex="0">
+    <div class="yao placeholder solid"><div class="yao-bar"></div></div>
+    <div class="yao placeholder solid"><div class="yao-bar"></div></div>
+    <div class="yao placeholder solid"><div class="yao-bar"></div></div>
+    <div class="yao placeholder solid"><div class="yao-bar"></div></div>
+    <div class="yao placeholder solid"><div class="yao-bar"></div></div>
+    <div class="yao placeholder solid"><div class="yao-bar"></div></div>
+  </div>
+
+  <div class="result-area" id="resultArea">
+    <p class="question-echo" id="questionEcho"></p>
+    <div class="hexagram-header">
+      <div class="seal" id="seal"></div>
+      <div class="hex-name-block">
+        <div class="hex-name" id="hexName"></div>
+        <div class="hex-reading" id="hexReading"></div>
+      </div>
+    </div>
+    <div class="keyword" id="keyword"></div>
+    <p class="message" id="message"></p>
+    <button class="retry" id="retryBtn">もう一度占う</button>
+  </div>
+</main>
+<footer>
+  ※占い結果は娯楽としてお楽しみください。<br>
+  大切な決断は、ご自身の気持ちを一番に。
+</footer>
+
+<script>
+// ---- 紙の質感(斑点)を生成 ----
+(function () {
+  const wrap = document.getElementById("paperTexture");
+  const count = 40;
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement("div");
+    s.className = "fleck";
+    const size = Math.random() * 2 + 1;
+    s.style.width = size + "px";
+    s.style.height = size + "px";
+    s.style.left = Math.random() * 100 + "%";
+    s.style.top = Math.random() * 100 + "%";
+    wrap.appendChild(s);
+  }
+})();
+
+// ---- 八卦のビット構成(下から上へ: 1=陽 0=陰) ----
+const TRIGRAM = {
+  qian: [1, 1, 1],
+  dui:  [1, 1, 0],
+  li:   [1, 0, 1],
+  zhen: [1, 0, 0],
+  xun:  [0, 1, 1],
+  kan:  [0, 1, 0],
+  gen:  [0, 0, 1],
+  kun:  [0, 0, 0]
+};
+
+// ---- 六十四卦データ(上経30卦・下経34卦。順番は易経の伝統的な配列) ----
+const HEXAGRAMS = [
+  { name: "乾為天", reading: "けんいてん", keyword: "創造・主体性", up: "qian", lo: "qian",
+    msg: "物事は今、力強く動き出す局面です。自分から一歩踏み出せば、流れは大きく前進していきます。" },
+  { name: "坤為地", reading: "こんいち", keyword: "受容・従う", up: "kun", lo: "kun",
+    msg: "焦って主導権を握るより、周囲の流れに合わせるときです。素直に受け止めることで、物事は着実に形になっていきます。" },
+  { name: "水雷屯", reading: "すいらいちゅん", keyword: "産みの苦しみ", up: "kan", lo: "zhen",
+    msg: "始まったばかりで、まだ思うように進まない時期です。焦らず土台を固めれば、この先必ず道は開けていきます。" },
+  { name: "山水蒙", reading: "さんすいもう", keyword: "未熟・学び", up: "gen", lo: "kan",
+    msg: "今はまだ見通しが立たない段階です。素直に学び、経験を積むことで、次第に霧が晴れていくでしょう。" },
+  { name: "水天需", reading: "すいてんじゅ", keyword: "待つ", up: "kan", lo: "qian",
+    msg: "今はタイミングを待つときです。焦らずに準備を整えておけば、必要な機会は自然とやってきます。" },
+  { name: "天水訟", reading: "てんすいしょう", keyword: "争い・対立", up: "qian", lo: "kan",
+    msg: "意見の食い違いが起こりやすい時期です。無理に押し通そうとせず、早めに折り合いをつけるのが賢明でしょう。" },
+  { name: "地水師", reading: "ちすいし", keyword: "統率・団結", up: "kun", lo: "kan",
+    msg: "一人で抱え込まず、周囲と力を合わせるときです。規律を持って進めば、この先着実に成果へとつながります。" },
+  { name: "水地比", reading: "すいちひ", keyword: "協力・親しむ", up: "kan", lo: "kun",
+    msg: "信頼できる相手と手を組むことで、物事が良い方向に進みます。誠実な関わりを大切にしてください。" },
+  { name: "風天小畜", reading: "ふうてんしょうちく", keyword: "小さな蓄え", up: "xun", lo: "qian",
+    msg: "大きな成果はまだ先ですが、小さな積み重ねが確かな力になっていきます。今は地道な努力を続けるときです。" },
+  { name: "天沢履", reading: "てんたくり", keyword: "慎重に進む", up: "qian", lo: "dui",
+    msg: "危うさをはらむ場面もありますが、礼儀と慎重さを保てば無事に切り抜けられます。油断だけは禁物です。" },
+  { name: "地天泰", reading: "ちてんたい", keyword: "安泰・調和", up: "kun", lo: "qian",
+    msg: "物事が滑らかに通じ合う、とても良い流れです。この勢いを生かして、心置きなく前へ進んでください。" },
+  { name: "天地否", reading: "てんちひ", keyword: "閉塞", up: "qian", lo: "kun",
+    msg: "今は物事が滞りやすい時期です。無理に動かそうとせず、状況が変わるのをじっと待つのが得策です。" },
+  { name: "天火同人", reading: "てんかどうじん", keyword: "協力・同志", up: "qian", lo: "li",
+    msg: "志を同じくする仲間と手を組むことで、物事は大きく前進します。心を開いて人と関わってください。" },
+  { name: "火天大有", reading: "かてんたいゆう", keyword: "豊かさ", up: "li", lo: "qian",
+    msg: "実り多い、恵まれた流れがやってきます。得たものを独り占めせず、周囲と分かち合うとさらに良い結果になります。" },
+  { name: "地山謙", reading: "ちざんけん", keyword: "謙虚", up: "kun", lo: "gen",
+    msg: "控えめな姿勢が、この先の道をスムーズにしてくれます。謙虚でいる人ほど、周囲からの信頼を集めるでしょう。" },
+  { name: "雷地予", reading: "らいちよ", keyword: "喜び・準備", up: "zhen", lo: "kun",
+    msg: "楽しい気持ちで準備を進めれば、物事は自然と弾みがついていきます。前向きな心が追い風になるでしょう。" },
+  { name: "沢雷随", reading: "たくらいずい", keyword: "従う・柔軟性", up: "dui", lo: "zhen",
+    msg: "流れに逆らわず、状況に合わせて柔軟に動くときです。素直についていくことで、良い結果に導かれます。" },
+  { name: "山風蠱", reading: "さんぷうこ", keyword: "立て直し", up: "gen", lo: "xun",
+    msg: "これまでの問題や滞りに手を入れるべきタイミングです。手間はかかっても、立て直せば大きく好転します。" },
+  { name: "地沢臨", reading: "ちたくりん", keyword: "近づく・勢い", up: "kun", lo: "dui",
+    msg: "物事に勢いが出てくる時期です。今のうちに関わりを深めておくと、この先さらに良い流れに育っていきます。" },
+  { name: "風地観", reading: "ふうちかん", keyword: "観察", up: "xun", lo: "kun",
+    msg: "今は動くより、じっくり状況を見極めるときです。落ち着いて全体を眺めることで、次の一手が見えてきます。" },
+  { name: "火雷噬嗑", reading: "からいぜいごう", keyword: "障害を除く", up: "li", lo: "zhen",
+    msg: "間に挟まる障害をはっきりさせ、思い切って取り除くべきときです。多少の摩擦があっても、進めば道は開けます。" },
+  { name: "山火賁", reading: "さんかひ", keyword: "装い", up: "gen", lo: "li",
+    msg: "見た目や形を整えることが、この先を後押ししてくれます。ただし中身を伴わせることを忘れないでください。" },
+  { name: "山地剥", reading: "さんちはく", keyword: "崩れる", up: "gen", lo: "kun",
+    msg: "今は物事が少しずつ崩れやすい時期です。無理に持ちこたえようとせず、次に備えて力を蓄えてください。" },
+  { name: "地雷復", reading: "ちらいふく", keyword: "回復・再生", up: "kun", lo: "zhen",
+    msg: "底を打って、再び上向きに転じていく兆しです。焦らず一歩ずつ、もとの調子を取り戻していけるでしょう。" },
+  { name: "天雷无妄", reading: "てんらいむもう", keyword: "自然体", up: "qian", lo: "zhen",
+    msg: "策を弄するより、素直で誠実な姿勢が良い結果を呼びます。作為のない自然な行動を心がけてください。" },
+  { name: "山天大畜", reading: "さんてんたいちく", keyword: "力を蓄える", up: "gen", lo: "qian",
+    msg: "今は力を内側に蓄える時期です。ここで培ったものが、この先大きな成果として花開いていきます。" },
+  { name: "山雷頤", reading: "さんらいい", keyword: "養う", up: "gen", lo: "zhen",
+    msg: "心身や関係を養い、整えるべきタイミングです。何を取り入れ、何を控えるか、見極めることが鍵になります。" },
+  { name: "沢風大過", reading: "たくふうたいか", keyword: "重圧", up: "dui", lo: "xun",
+    msg: "少し無理のかかりやすい局面です。一人で背負い込まず、支えを借りながら乗り切ることをおすすめします。" },
+  { name: "坎為水", reading: "かんいすい", keyword: "困難・試練", up: "kan", lo: "kan",
+    msg: "困難が重なりやすい時期ですが、誠実に対処し続ければ道は必ず通じます。ここでの経験が力になります。" },
+  { name: "離為火", reading: "りいか", keyword: "輝き・明晰", up: "li", lo: "li",
+    msg: "物事がはっきりと見えてくる、明るい流れです。その輝きを長く保つには、周囲との調和も意識してください。" },
+  { name: "沢山咸", reading: "たくざんかん", keyword: "感応・心が通う", up: "dui", lo: "gen",
+    msg: "心と心が自然に通じ合う時期です。素直な気持ちで向き合えば、良い関係やご縁につながっていきます。" },
+  { name: "雷風恒", reading: "らいふうこう", keyword: "持続", up: "zhen", lo: "xun",
+    msg: "目先の変化に振り回されず、これまでの歩みを続けることが吉と出ます。継続こそが力になる時期です。" },
+  { name: "天山遯", reading: "てんざんとん", keyword: "退く", up: "qian", lo: "gen",
+    msg: "今は無理に踏みとどまるより、一歩引くほうが賢明です。潔く身を引くことで、後の展開が良くなります。" },
+  { name: "雷天大壮", reading: "らいてんたいそう", keyword: "勢い", up: "zhen", lo: "qian",
+    msg: "勢いは十分にありますが、その分暴走には注意が必要です。力を正しい方向に使えば、大きく前進できます。" },
+  { name: "火地晋", reading: "かちしん", keyword: "前進", up: "li", lo: "kun",
+    msg: "物事が着実に上向いていく、明るい兆しです。この流れに乗って、ためらわず前に進んでください。" },
+  { name: "地火明夷", reading: "ちかめいい", keyword: "才を隠す", up: "kun", lo: "li",
+    msg: "今は自分の力を目立たせず、静かに耐えるときです。無理に表に出ようとせず、時が来るのを待ちましょう。" },
+  { name: "風火家人", reading: "ふうかかじん", keyword: "身近な絆", up: "xun", lo: "li",
+    msg: "家庭や身近な関係を大切にすることが、この先の安定につながります。足元をしっかり固めてください。" },
+  { name: "火沢睽", reading: "かたくけい", keyword: "すれ違い", up: "li", lo: "dui",
+    msg: "考え方の違いから、すれ違いが起こりやすい時期です。小さな共通点を見つけることから、関係を修復できます。" },
+  { name: "水山蹇", reading: "すいざんけん", keyword: "行き詰まり", up: "kan", lo: "gen",
+    msg: "目の前に困難が立ちはだかる時期です。無理に進まず、信頼できる人の力を借りて乗り越えてください。" },
+  { name: "雷水解", reading: "らいすいかい", keyword: "解放", up: "zhen", lo: "kan",
+    msg: "これまでの緊張や問題が、少しずつ解けていく兆しです。抱えていたものを手放すと、心も軽くなります。" },
+  { name: "山沢損", reading: "さんたくそん", keyword: "損して得取る", up: "gen", lo: "dui",
+    msg: "一時的に何かを差し出すことになりますが、それが後々大きな実りとして返ってきます。長い目で見てください。" },
+  { name: "風雷益", reading: "ふうらいえき", keyword: "増える・恩恵", up: "xun", lo: "zhen",
+    msg: "与えれば与えるほど、この先豊かに返ってくる流れです。出し惜しみせず、周囲に力を尽くしてください。" },
+  { name: "沢天夬", reading: "たくてんかい", keyword: "決断", up: "dui", lo: "qian",
+    msg: "迷いを断ち切り、はっきりと決断すべきときです。多少の波乱があっても、思い切ることで道が開けます。" },
+  { name: "天風姤", reading: "てんぷうこう", keyword: "思わぬ出会い", up: "qian", lo: "xun",
+    msg: "予期せぬ出来事や出会いが訪れやすい時期です。良い縁か見極めながら、慎重に受け止めてください。" },
+  { name: "沢地萃", reading: "たくちすい", keyword: "集まる", up: "dui", lo: "kun",
+    msg: "人や物事が自然と集まってくる、勢いのある時期です。中心となる軸をしっかり持つことが大切です。" },
+  { name: "地風升", reading: "ちふうしょう", keyword: "上昇", up: "kun", lo: "xun",
+    msg: "少しずつ、しかし着実に上向いていく流れです。焦らず一段ずつ、地道に積み上げていってください。" },
+  { name: "沢水困", reading: "たくすいこん", keyword: "苦境", up: "dui", lo: "kan",
+    msg: "思うように動けず、もどかしさを感じやすい時期です。ここで乱れず落ち着いていれば、必ず抜け道は見えてきます。" },
+  { name: "水風井", reading: "すいふうせい", keyword: "尽きない恵み", up: "kan", lo: "xun",
+    msg: "変わらず頼れるものの価値が見直される時期です。基本に立ち返ることが、この先の安定につながります。" },
+  { name: "沢火革", reading: "たっかかく", keyword: "変革", up: "dui", lo: "li",
+    msg: "これまでのやり方を大きく変えるべきタイミングです。思い切った変化が、この先を良い方向に導きます。" },
+  { name: "火風鼎", reading: "かふうてい", keyword: "新たな体制", up: "li", lo: "xun",
+    msg: "古いものを新しく作り変える時期です。役割や体制を整えることで、この先が安定していきます。" },
+  { name: "震為雷", reading: "しんいらい", keyword: "動揺・目覚め", up: "zhen", lo: "zhen",
+    msg: "驚くような出来事が起こりやすい時期ですが、動じず落ち着いて受け止めれば、かえって好機に変わります。" },
+  { name: "艮為山", reading: "ごんいさん", keyword: "静止", up: "gen", lo: "gen",
+    msg: "今は動くよりも、じっと止まって内省するときです。心を静めることで、次に進むべき道が見えてきます。" },
+  { name: "風山漸", reading: "ふうざんぜん", keyword: "着実な前進", up: "xun", lo: "gen",
+    msg: "一足飛びには進みませんが、段階を踏んで着実に良くなっていきます。順序を守ることが成功の鍵です。" },
+  { name: "雷沢帰妹", reading: "らいたくきまい", keyword: "立場の変化", up: "zhen", lo: "dui",
+    msg: "本来とは違う形で物事が進みやすい時期です。無理に型にはめず、状況に応じた柔軟な対応を心がけてください。" },
+  { name: "雷火豊", reading: "らいかほう", keyword: "充実・絶頂", up: "zhen", lo: "li",
+    msg: "物事が最も盛んになる、充実した時期です。ただし絶頂の先には陰りもあるため、驕らず過ごしてください。" },
+  { name: "火山旅", reading: "かざんりょ", keyword: "旅・仮の身", up: "li", lo: "gen",
+    msg: "慣れない環境や立場に身を置くことになりそうです。謙虚に振る舞えば、この先も丁寧に迎えてもらえます。" },
+  { name: "巽為風", reading: "そんいふう", keyword: "浸透", up: "xun", lo: "xun",
+    msg: "強引に押すよりも、少しずつ柔らかく浸透させるほうがうまくいきます。粘り強さがこの先を支えてくれます。" },
+  { name: "兌為沢", reading: "だいたく", keyword: "喜び・交流", up: "dui", lo: "dui",
+    msg: "人との明るいやり取りが、この先の流れを良くしてくれます。素直な喜びを分かち合ってください。" },
+  { name: "風水渙", reading: "ふうすいかん", keyword: "わだかまりが解ける", up: "xun", lo: "kan",
+    msg: "これまでの停滞やわだかまりが、少しずつ解けていく兆しです。心を開くことで、流れが軽やかになります。" },
+  { name: "水沢節", reading: "すいたくせつ", keyword: "節度", up: "kan", lo: "dui",
+    msg: "ここは無理をせず、適度な節度を保つべき時期です。ほどよい制限が、かえって物事を安定させてくれます。" },
+  { name: "風沢中孚", reading: "ふうたくちゅうふ", keyword: "誠実な心", up: "xun", lo: "dui",
+    msg: "偽りのない誠実な気持ちが、この先を大きく動かしていきます。信じる心を持ち続けてください。" },
+  { name: "雷山小過", reading: "らいざんしょうか", keyword: "小さくまとめる", up: "zhen", lo: "gen",
+    msg: "大きなことよりも、目の前の小さなことを丁寧に行うときです。控えめな行動が、この先の安定につながります。" },
+  { name: "水火既済", reading: "すいかきせい", keyword: "完成・油断禁物", up: "kan", lo: "li",
+    msg: "物事は一区切りつく流れですが、完成した後の気の緩みには注意が必要です。最後まで気を抜かないでください。" },
+  { name: "火水未済", reading: "かすいびせい", keyword: "未完成・続く道", up: "li", lo: "kan",
+    msg: "まだ物事は完成の途中です。焦らず一歩ずつ整えていけば、この先着実にゴールへと近づいていきます。" }
+];
+
+// ---- 数字を漢数字に変換(1〜64) ----
+function toKanji(n) {
+  const ones = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+  if (n < 10) return ones[n];
+  const tens = Math.floor(n / 10);
+  const rem = n % 10;
+  let s = tens === 1 ? "十" : ones[tens] + "十";
+  if (rem > 0) s += ones[rem];
+  return s;
+}
+
+const stage = document.getElementById("hexStage");
+const yaoEls = Array.from(stage.querySelectorAll(".yao"));
+const resultArea = document.getElementById("resultArea");
+const guide = document.getElementById("guide");
+let casting = false;
+let done = false;
+
+function cast() {
+  if (casting || done) return;
+  casting = true;
+  guide.textContent = "卦を立てています…";
+
+  // 六本の爻をランダムに生成(下から上へ)
+  const lines = [];
+  for (let i = 0; i < 6; i++) lines.push(Math.random() < 0.5 ? 1 : 0);
+
+  // 該当する卦を検索
+  const hex = HEXAGRAMS.find(function (h) {
+    const bits = TRIGRAM[h.lo].concat(TRIGRAM[h.up]);
+    return bits.every(function (b, i) { return b === lines[i]; });
+  });
+  const hexIndex = HEXAGRAMS.indexOf(hex) + 1;
+
+  // 爻を1本ずつ下から表示
+  yaoEls.forEach(function (el, i) {
+    el.classList.remove("placeholder", "solid", "broken", "revealed");
+    el.classList.add(lines[i] === 1 ? "solid" : "broken");
+    setTimeout(function () {
+      el.classList.add("revealed");
+    }, i * 170 + 30);
+  });
+
+  setTimeout(function () {
+    const q = document.getElementById("question").value.trim();
+    document.getElementById("questionEcho").textContent = q ? "Q. " + q : "";
+    document.getElementById("seal").textContent = toKanji(hexIndex);
+    document.getElementById("hexName").textContent = hex.name;
+    document.getElementById("hexReading").textContent = hex.reading;
+    document.getElementById("keyword").textContent = hex.keyword;
+    document.getElementById("message").textContent = hex.msg;
+
+    guide.textContent = "卦からのメッセージ";
+    resultArea.classList.add("show");
+    done = true;
+    casting = false;
+  }, 6 * 170 + 500);
+}
+
+stage.addEventListener("click", cast);
+stage.addEventListener("keydown", function (e) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    cast();
+  }
+});
+
+document.getElementById("retryBtn").addEventListener("click", function () {
+  done = false;
+  casting = false;
+  resultArea.classList.remove("show");
+  yaoEls.forEach(function (el) {
+    el.classList.remove("solid", "broken", "revealed");
+    el.classList.add("placeholder", "solid");
+  });
+  guide.textContent = "心の中で問いを思い浮かべて、下の卦をタップしてください";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+</script>
+</body>
+</html>

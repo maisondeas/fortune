@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数秘術 ― 性格と今日の運勢</title>
+<meta name="description" content="生年月日から導く運命数で、あなたの性格と今日の運勢を占います。">
+<style>
+  :root {
+    --bg1: #0e3a38;
+    --bg2: #16514c;
+    --mint: #e2f1ea;
+    --mint-soft: rgba(226, 241, 234, 0.72);
+    --mint-faint: rgba(226, 241, 234, 0.45);
+    --copper: #e3a56d;
+    --copper-deep: #c8834a;
+    --line: rgba(227, 165, 109, 0.3);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: linear-gradient(165deg, var(--bg1) 0%, var(--bg2) 100%);
+    color: var(--mint);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+  }
+  /* 背景に浮かぶ数字 */
+  .digits {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .digit {
+    position: absolute;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    color: var(--copper);
+    opacity: 0.07;
+    user-select: none;
+  }
+  main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 460px;
+    padding: 40px 20px 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--copper);
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--mint-soft);
+    margin-top: 10px;
+    text-align: center;
+    line-height: 1.7;
+  }
+  .divider {
+    width: 100px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--copper), transparent);
+    margin: 24px auto 28px;
+  }
+  /* 入力 */
+  .input-block {
+    width: 100%;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 26px;
+  }
+  .input-block label {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--mint-soft);
+    margin-bottom: 10px;
+  }
+  #birth {
+    width: 100%;
+    font-size: 16px;
+    font-family: inherit;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--mint);
+    outline: none;
+    text-align: center;
+  }
+  #birth:focus { border-color: var(--copper); }
+  button.cast {
+    margin-top: 18px;
+    font-size: 16px;
+    font-family: inherit;
+    letter-spacing: 0.12em;
+    padding: 13px 44px;
+    border-radius: 999px;
+    border: 1px solid var(--copper);
+    background: transparent;
+    color: var(--copper);
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.cast:active { background: var(--copper); color: var(--bg1); }
+  .notice {
+    font-size: 12.5px;
+    color: var(--copper);
+    margin-top: 12px;
+    min-height: 18px;
+    text-align: center;
+  }
+  /* 結果 */
+  .result-area {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: fadeUp 0.7s ease both;
+  }
+  .result-area.show { display: flex; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .result-area { animation: none !important; }
+  }
+  .section-label {
+    font-size: 11.5px;
+    letter-spacing: 0.28em;
+    color: var(--mint-faint);
+    margin-bottom: 16px;
+  }
+  /* 数字の円 */
+  .numeral-ring {
+    position: relative;
+    width: 128px;
+    height: 128px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .numeral-ring::before,
+  .numeral-ring::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+  }
+  .numeral-ring::before { inset: 0; }
+  .numeral-ring::after { inset: 9px; border-color: rgba(227, 165, 109, 0.18); }
+  .numeral {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 54px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--copper);
+    line-height: 1;
+    text-shadow: 0 0 26px rgba(227, 165, 109, 0.35);
+  }
+  .numeral.master { font-size: 46px; }
+  .type-name {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--mint);
+  }
+  .keyword {
+    display: inline-block;
+    margin: 12px 0 16px;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    color: var(--copper);
+    border-top: 1px solid rgba(227, 165, 109, 0.3);
+    border-bottom: 1px solid rgba(227, 165, 109, 0.3);
+    padding: 5px 18px;
+  }
+  .message {
+    font-size: 15px;
+    line-height: 1.9;
+    letter-spacing: 0.03em;
+    color: rgba(226, 241, 234, 0.94);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(227, 165, 109, 0.2);
+    border-radius: 10px;
+    padding: 17px 19px;
+    width: 100%;
+  }
+  .block-gap {
+    width: 70px;
+    height: 1px;
+    background: rgba(227, 165, 109, 0.25);
+    margin: 34px auto 30px;
+  }
+  .today-date {
+    font-size: 12.5px;
+    letter-spacing: 0.1em;
+    color: var(--mint-faint);
+    margin-bottom: 14px;
+  }
+  .day-numeral {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 40px;
+    font-weight: 600;
+    color: var(--copper);
+    line-height: 1;
+    margin-bottom: 10px;
+    text-shadow: 0 0 20px rgba(227, 165, 109, 0.3);
+  }
+  .hint {
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--mint-soft);
+    margin-top: 14px;
+  }
+  .hint span { color: var(--copper); }
+  button.retry {
+    margin-top: 32px;
+    font-size: 16px;
+    font-family: inherit;
+    letter-spacing: 0.1em;
+    padding: 12px 34px;
+    border-radius: 999px;
+    border: 1px solid var(--mint-faint);
+    background: transparent;
+    color: var(--mint-soft);
+    cursor: pointer;
+    transition: background 0.3s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.retry:active { background: rgba(255, 255, 255, 0.1); }
+  footer {
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+    color: var(--mint-faint);
+    padding: 0 16px 26px;
+    text-align: center;
+    line-height: 1.8;
+  }
+  @media (min-width: 600px) {
+    h1 { font-size: 30px; }
+    .numeral-ring { width: 145px; height: 145px; }
+    .numeral { font-size: 62px; }
+    .type-name { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="digits" id="digits"></div>
+<main>
+  <h1>数 秘 術</h1>
+  <p class="subtitle">生年月日から導く数が、<br>あなたの性格と今日の運勢を映します</p>
+  <div class="divider"></div>
+
+  <div class="input-block">
+    <label for="birth">生年月日を選んでください</label>
+    <input type="date" id="birth" min="1900-01-01">
+    <button class="cast" id="castBtn">占う</button>
+    <p class="notice" id="notice"></p>
+  </div>
+
+  <div class="result-area" id="resultArea">
+    <p class="section-label">あ な た の 運 命 数</p>
+    <div class="numeral-ring">
+      <div class="numeral" id="lifeNumeral"></div>
+    </div>
+    <div class="type-name" id="typeName"></div>
+    <div class="keyword" id="typeKeyword"></div>
+    <p class="message" id="typeMessage"></p>
+
+    <div class="block-gap"></div>
+
+    <p class="section-label">今 日 の 運 勢</p>
+    <p class="today-date" id="todayDate"></p>
+    <div class="day-numeral" id="dayNumeral"></div>
+    <div class="type-name" id="dayTitle"></div>
+    <div class="keyword" id="dayKeyword"></div>
+    <p class="message" id="dayMessage"></p>
+    <p class="hint" id="dayHint"></p>
+
+    <button class="retry" id="retryBtn">生年月日を選び直す</button>
+  </div>
+</main>
+<footer>
+  ※占い結果は娯楽としてお楽しみください。<br>
+  大切な決断は、ご自身の気持ちを一番に。
+</footer>
+
+<script>
+// ---- 背景の数字を配置 ----
+(function () {
+  const wrap = document.getElementById("digits");
+  for (let i = 0; i < 22; i++) {
+    const d = document.createElement("div");
+    d.className = "digit";
+    d.textContent = String(Math.floor(Math.random() * 9) + 1);
+    d.style.fontSize = (Math.random() * 40 + 22) + "px";
+    d.style.left = Math.random() * 96 + "%";
+    d.style.top = Math.random() * 96 + "%";
+    d.style.transform = "rotate(" + (Math.random() * 30 - 15) + "deg)";
+    wrap.appendChild(d);
+  }
+})();
+
+// ---- 運命数(ライフパスナンバー)の解説 ----
+const LIFE_PATH = {
+  1:  { name: "開拓する人", keyword: "自立・先駆け",
+        msg: "自分の意思で道を切り開いていく力を持っています。人に合わせるより、自分が「こうしたい」と思った方へ進むときに本領を発揮するタイプです。ただし一人で背負い込みやすいので、頼ることも覚えると、さらに大きく前進できます。" },
+  2:  { name: "寄り添う人", keyword: "協調・繊細さ",
+        msg: "相手の気持ちを察する感受性に恵まれ、場を和ませる存在です。競うより支える立場でこそ輝きます。人の感情を受け取りすぎて疲れることもあるので、自分の心を休ませる時間を意識して確保してください。" },
+  3:  { name: "表現する人", keyword: "創造・楽しさ",
+        msg: "明るさと発想力で、周りを楽しい気持ちにさせる才能があります。作ること、話すこと、伝えることが力になるタイプです。飽きやすい面もありますが、興味の広さこそがあなたの財産になります。" },
+  4:  { name: "積み上げる人", keyword: "誠実・堅実",
+        msg: "地道な努力を続けられる、揺るぎない安定感の持ち主です。信頼を少しずつ積み重ねて、確かな成果に変えていきます。真面目さゆえに肩に力が入りやすいので、時には「まあいいか」と緩める余白も大切にしてください。" },
+  5:  { name: "自由を生きる人", keyword: "変化・好奇心",
+        msg: "新しいものへの好奇心が強く、変化の中でこそ生き生きするタイプです。同じ場所にとどまるより、動きながら学んでいく人生が合っています。選択肢が多いときほど、自分が本当に大事にしたい軸を思い出してください。" },
+  6:  { name: "慈しむ人", keyword: "愛情・責任感",
+        msg: "面倒見がよく、周囲から自然と頼りにされる存在です。人のために動くことに喜びを感じられる、あたたかな心の持ち主。ただし尽くしすぎて自分が後回しになりがちなので、自分を大切にすることも忘れないでください。" },
+  7:  { name: "探究する人", keyword: "知性・内省",
+        msg: "物事の奥にある本質を見抜こうとする、深い思考力の持ち主です。一人の静かな時間が、あなたにとって何よりの栄養になります。人と距離を取りすぎる傾向もあるので、心を許せる相手には素直に本音を伝えてみてください。" },
+  8:  { name: "実現する人", keyword: "実行力・達成",
+        msg: "現実を動かす力に長けた、頼もしい実務家です。目標を掲げれば、そこへ届く道筋を組み立てて着実に進めていけます。成果を求めるあまり自分にも他人にも厳しくなりやすいので、ときには結果より過程を認めてあげてください。" },
+  9:  { name: "包み込む人", keyword: "博愛・受容",
+        msg: "広い視野と優しさで、さまざまな立場の人を受け入れられる人です。誰かの助けになることに、深い充足を感じるでしょう。優しさゆえに損な役回りを引き受けがちなので、断る勇気も自分を守る大切な力になります。" },
+  11: { name: "直感の人", keyword: "感受性・ひらめき",
+        msg: "理屈を超えた鋭い勘と、繊細な感受性を併せ持つ特別な数です。ふと浮かんだ予感が、驚くほど当たることがあるでしょう。感じ取る力が強いぶん心が揺れやすいので、静かな環境と十分な休息を意識して整えてください。" },
+  22: { name: "形にする人", keyword: "構想・実現力",
+        msg: "大きな理想を、現実の形にまで落とし込める稀有な力を持っています。長い時間をかけた取り組みほど、あなたらしい成果になります。スケールが大きいぶん焦りも生まれやすいので、目の前の一歩を丁寧に踏むことを忘れないでください。" },
+  33: { name: "与える人", keyword: "無償の愛・影響力",
+        msg: "見返りを求めず人に手を差し伸べられる、深い愛情を宿した数です。あなたの存在そのものが、誰かの支えになっていきます。枠にはまらない自由な感性を持つので、常識に合わせようとしすぎず、あなたらしさを大切にしてください。" }
+};
+
+// ---- 今日の数(パーソナルデーナンバー)の解説 ----
+const PERSONAL_DAY = {
+  1: { title: "始まりの日", keyword: "スタート",
+       msg: "新しいことを始めるのに向いた一日です。迷っていた用件があれば、今日のうちに最初の一歩を踏み出すと弾みがつきます。自分の意思で選んだことほど、良い流れに乗っていくでしょう。",
+       hint: "今日のひとこと:小さくても「初めて」を一つ" },
+  2: { title: "寄り添いの日", keyword: "協調",
+       msg: "自分から押し出すより、人と歩調を合わせるとうまくいく一日です。相手の話をじっくり聞くことで、思わぬヒントが得られます。急がず、ゆったりした気持ちで過ごしてください。",
+       hint: "今日のひとこと:聞き役にまわってみる" },
+  3: { title: "たのしみの日", keyword: "表現",
+       msg: "気持ちが軽やかになり、楽しいことに縁がある一日です。作る、書く、話すなど、自分を表に出す行動が幸運を呼びます。難しく考えず、心が動くほうを選んでみてください。",
+       hint: "今日のひとこと:好きなことに手をつける" },
+  4: { title: "地固めの日", keyword: "整える",
+       msg: "派手な動きより、足元を整えることが吉と出る一日です。片づけ、見直し、後回しにしていた作業などがはかどります。今日の地道な積み重ねが、後々の安心につながります。",
+       hint: "今日のひとこと:一つ、きちんと片づける" },
+  5: { title: "変化の日", keyword: "自由",
+       msg: "予定外の出来事や、新しい情報が入ってきやすい一日です。流れに逆らわず、身軽に動けるほど良い展開に出会えます。いつもと違う道を選んでみるのもおすすめです。",
+       hint: "今日のひとこと:いつもと違う選択をしてみる" },
+  6: { title: "思いやりの日", keyword: "愛情",
+       msg: "身近な人との関わりが、心を温めてくれる一日です。家族や親しい相手に気を配ると、その優しさが巡って返ってきます。自分をいたわる時間も忘れないでください。",
+       hint: "今日のひとこと:誰かに小さな親切を" },
+  7: { title: "静けさの日", keyword: "内省",
+       msg: "外に動くより、一人で考えを深めるのに適した一日です。焦って答えを出そうとせず、静かな時間の中で心を整えてみてください。ふとした気づきが訪れやすいときです。",
+       hint: "今日のひとこと:少し一人の時間をつくる" },
+  8: { title: "勝負の日", keyword: "実現",
+       msg: "力を発揮しやすく、結果につながりやすい一日です。大事な連絡や交渉、頑張りどころがあるなら今日が好機になります。堂々と構えて臨んでください。",
+       hint: "今日のひとこと:先延ばしにしていた一件に挑む" },
+  9: { title: "手放しの日", keyword: "区切り",
+       msg: "一つの区切りを迎えやすい一日です。終わったことを整理したり、手放したりすると、心にゆとりが生まれます。次の流れを迎え入れる準備の日と考えてください。",
+       hint: "今日のひとこと:抱えているものを一つ手放す" }
+};
+
+// ---- 数字を各桁に分解して合計 ----
+function digitSum(n) {
+  return String(n).split("").reduce(function (a, c) { return a + Number(c); }, 0);
+}
+
+// ---- 一桁になるまで還元(keepMaster が true なら 11/22/33 で停止) ----
+function reduceNum(n, keepMaster) {
+  while (n > 9) {
+    if (keepMaster && (n === 11 || n === 22 || n === 33)) return n;
+    n = digitSum(n);
+  }
+  return n;
+}
+
+const birthInput = document.getElementById("birth");
+const notice = document.getElementById("notice");
+const resultArea = document.getElementById("resultArea");
+const inputBlock = document.querySelector(".input-block");
+
+// 前回の生年月日を復元
+try {
+  const saved = localStorage.getItem("numerology_birth");
+  if (saved) birthInput.value = saved;
+} catch (e) {}
+
+function cast() {
+  const val = birthInput.value;
+  if (!val) {
+    notice.textContent = "生年月日を選んでください";
+    return;
+  }
+  const parts = val.split("-");
+  const y = Number(parts[0]);
+  const m = Number(parts[1]);
+  const d = Number(parts[2]);
+  if (!y || !m || !d) {
+    notice.textContent = "生年月日を正しく選んでください";
+    return;
+  }
+  notice.textContent = "";
+
+  try { localStorage.setItem("numerology_birth", val); } catch (e) {}
+
+  // 運命数(生年月日の全桁を合計して還元。11/22/33 は残す)
+  const lifeRaw = digitSum(y) + digitSum(m) + digitSum(d);
+  const life = reduceNum(lifeRaw, true);
+  const lifeData = LIFE_PATH[life];
+
+  const numeralEl = document.getElementById("lifeNumeral");
+  numeralEl.textContent = life;
+  numeralEl.classList.toggle("master", life > 9);
+  document.getElementById("typeName").textContent = lifeData.name;
+  document.getElementById("typeKeyword").textContent = lifeData.keyword;
+  document.getElementById("typeMessage").textContent = lifeData.msg;
+
+  // 今日の数(誕生月日 + 今年 → 今月 → 今日 と順に還元)
+  // 端末の時計に関わらず、日本時間(UTC+9)の日付を使う
+  const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const ty = jstNow.getUTCFullYear();
+  const tm = jstNow.getUTCMonth() + 1;
+  const td = jstNow.getUTCDate();
+
+  const personalYear = reduceNum(digitSum(m) + digitSum(d) + digitSum(ty), false);
+  const personalMonth = reduceNum(personalYear + digitSum(tm), false);
+  const personalDay = reduceNum(personalMonth + digitSum(td), false);
+  const dayData = PERSONAL_DAY[personalDay];
+
+  document.getElementById("todayDate").textContent = ty + "年" + tm + "月" + td + "日";
+  document.getElementById("dayNumeral").textContent = personalDay;
+  document.getElementById("dayTitle").textContent = dayData.title;
+  document.getElementById("dayKeyword").textContent = dayData.keyword;
+  document.getElementById("dayMessage").textContent = dayData.msg;
+  document.getElementById("dayHint").innerHTML =
+    "<span>" + dayData.hint + "</span>";
+
+  inputBlock.style.display = "none";
+  resultArea.classList.add("show");
+}
+
+document.getElementById("castBtn").addEventListener("click", cast);
+birthInput.addEventListener("keydown", function (e) {
+  if (e.key === "Enter") { e.preventDefault(); cast(); }
+});
+
+document.getElementById("retryBtn").addEventListener("click", function () {
+  resultArea.classList.remove("show");
+  inputBlock.style.display = "flex";
+  notice.textContent = "";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+</script>
+</body>
+</html>
